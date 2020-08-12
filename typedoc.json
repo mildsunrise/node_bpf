@@ -1,0 +1,9 @@
+{
+    "mode": "modules",
+    "excludePrivate": true,
+    "excludeProtected": true,
+    "excludeExternals": true,
+    "excludeNotExported": true,
+    "target": "ES6",
+    "listInvalidSymbolLinks": true
+}
