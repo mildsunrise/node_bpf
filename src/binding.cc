@@ -1,7 +1,7 @@
 #include <memory>
 #include <string>
 
-#include <bpf/bpf.h>
+#include <bpf.h>
 #include <errno.h>
 
 #include <napi.h>
@@ -27,10 +27,6 @@ T GetNumber(Napi::Env env, Napi::Value value, T def) {
 
 bool GetBoolean(Napi::Env env, Napi::Value value) {
     return Napi::Boolean(env, value);
-}
-
-bpf_probe_attach_type GetAttachType(Napi::Env env, Napi::Value value) {
-    return (bpf_probe_attach_type) GetNumber<int>(env, value, (int) BPF_PROBE_ENTRY);
 }
 
 uint64_t GetUint64(Napi::Env env, Napi::Value value) {

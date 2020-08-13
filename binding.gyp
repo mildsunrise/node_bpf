@@ -6,7 +6,8 @@
             "include_dirs": [
                 "<!@(node -p \"require('node-addon-api').include\")",
             ],
-            
+            "dependencies": [ "deps/libbpf.gyp:libbpf" ],
+
             # Enable exceptions
             "cflags!": [ "-fno-exceptions" ],
             "cflags_cc!": [ "-fno-exceptions" ],
@@ -18,8 +19,6 @@
             "msvs_settings": {
                 "VCCLCompilerTool": { "ExceptionHandling": 1 },
             },
-            
-            # TODO
         }
     ],
 }
