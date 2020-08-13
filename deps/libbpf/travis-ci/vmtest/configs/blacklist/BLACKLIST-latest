@@ -1,0 +1,5 @@
+# TEMPORARILY DISABLED
+send_signal		# flaky
+test_lsm		# semi-working
+sk_assign		# needs better setup in Travis CI
+core_reloc		# temporary test breakage
