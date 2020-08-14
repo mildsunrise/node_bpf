@@ -1,6 +1,9 @@
 #include <memory>
 #include <string>
 
+#include <linux/btf.h>
+#include <sys/utsname.h>
+
 #include <bpf.h>
 #include <errno.h>
 
@@ -179,6 +182,15 @@ Napi::Value MapUpdateBatch(const CallbackInfo& info) {
 #define EXPOSE_FUNCTION(NAME, METHOD) exports.Set(NAME, Napi::Function::New(env, METHOD, NAME))
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
+    auto versions = Napi::Object::New(env);
+    versions["libelf"] = Napi::String::New(env, "0.180");
+    versions["libbpf"] = Napi::String::New(env, "0.9.0");
+    versions["btf"] = Napi::Number::New(env, BTF_VERSION);
+    utsname kernel_info;
+    if (!uname(&kernel_info))
+        versions["kernel"] = Napi::String::New(env, kernel_info.release);
+    exports["versions"] = versions;
+
     exports["ENOENT"] = Napi::Number::New(env, ENOENT);
 
     EXPOSE_FUNCTION("mapUpdateElem", MapUpdateElem);
