@@ -183,6 +183,7 @@ Napi::Value MapUpdateBatch(const CallbackInfo& info) {
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
     auto versions = Napi::Object::New(env);
+    // Keep synchronized with deps
     versions["libelf"] = Napi::String::New(env, "0.180");
     versions["libbpf"] = Napi::String::New(env, "0.9.0");
     versions["btf"] = Napi::Number::New(env, BTF_VERSION);

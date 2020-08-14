@@ -1,11 +1,14 @@
 import * as util from 'util'
 const { getSystemErrorName } = util as any
 
+/**
+ * libbpf-specific errno codes
+ * 
+ * Keep synchronized with `deps/libbpf/src/libbpf.h`.
+ */
 export enum LibbpfErrno {
-    /** Something wrong in libelf */
-    LIBELF = 4000,
     /** BPF object format invalid */
-    FORMAT,
+    FORMAT = 4000,
     /** Incorrect or no 'version' section */
     KVERSION,
     /** Endian mismatch */
@@ -32,8 +35,12 @@ export enum LibbpfErrno {
     NLPARSE,
 }
 
+/**
+ * mapping of libbpf-specific errno codes to messages
+ * 
+ * Keep synchronized with `deps/libbpf/src/libbpf.h`.
+ */
 export const libbpfErrnoMessages: { [errno: number]: string } = {
-    [LibbpfErrno.LIBELF]: 'Something wrong in libelf',
     [LibbpfErrno.FORMAT]: 'BPF object format invalid',
     [LibbpfErrno.KVERSION]: "Incorrect or no 'version' section",
     [LibbpfErrno.ENDIAN]: 'Endian mismatch',
