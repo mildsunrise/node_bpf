@@ -25,7 +25,7 @@
             ],
             # should get zlib.h from Node headers
             "dependencies": [ "elfutils.gyp:libelf" ],
-            "cflags": [ "-Wno-sign-compare", "-Wno-missing-field-initializers" ],
+            "cflags": [ "-fvisibility=hidden", "-Wno-sign-compare", "-Wno-missing-field-initializers" ],
             "direct_dependent_settings": {
                 "include_dirs": [
                     "libbpf/src",
