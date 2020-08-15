@@ -1,6 +1,6 @@
 import { native, sliceBuffer } from '../util'
 import { checkStatus } from '../exception'
-import { MapRef, TypeConversion, OptionalTypeConversion } from './common'
+import { MapRef, TypeConversion, parseMaybe, formatMaybe } from './common'
 const { ENOENT } = native
 
 /**
@@ -328,12 +328,97 @@ export class RawMap implements IMap<Buffer, Buffer> {
  */
 export class ConvMap<K, V> implements IMap<K, V> {
 	private readonly map: RawMap
-	private readonly keyConv: OptionalTypeConversion<K>
-	private readonly valueConv: OptionalTypeConversion<V>
+	private readonly keyConv: TypeConversion<K>
+	private readonly valueConv: TypeConversion<V>
+
+	get ref() {
+		return this.map.ref
+	}
 
 	constructor(ref: MapRef, keyConv: TypeConversion<K>, valueConv: TypeConversion<V>) {
 		this.map = new RawMap(ref)
-		this.keyConv = new OptionalTypeConversion(keyConv)
-		this.valueConv = new OptionalTypeConversion(valueConv)
+		this.keyConv = keyConv
+		this.valueConv = valueConv
+	}
+
+	get(key: K, flags?: number): V | undefined {
+		return parseMaybe(this.valueConv,
+			this.map.get(this.keyConv.format(key), flags))
+	}
+
+	getDelete(key: K): V | undefined {
+		return parseMaybe(this.valueConv,
+			this.map.getDelete(this.keyConv.format(key)))
+	}
+
+	set(key: K, value: V, flags?: number): this {
+		this.map.set(this.keyConv.format(key), this.valueConv.format(value), flags)
+		return this
+	}
+
+	delete(key: K): boolean {
+		return this.map.delete(this.keyConv.format(key))
+	}
+
+	getBatch(keys: K[]): (V | undefined)[] {
+		return this.map.getBatch(keys.map(k => this.keyConv.format(k)))
+			.map(v => parseMaybe(this.valueConv, v))
+	}
+
+	getDeleteBatch(keys: K[]): (V | undefined)[] {
+		return this.map.getDeleteBatch(keys.map(k => this.keyConv.format(k)))
+			.map(v => parseMaybe(this.valueConv, v))
+	}
+
+	setBatch(entries: [K, V][]): this {
+		this.map.setBatch(entries.map(
+			([k, v]) => [this.keyConv.format(k), this.valueConv.format(v)]))
+		return this
+	}
+
+	deleteBatch(keys: K[]): K[] {
+		return this.map.deleteBatch(keys.map(k => this.keyConv.format(k)))
+			.map(k => this.keyConv.parse(k))
+	}
+
+	getNextKey(key?: K): K | undefined {
+		return parseMaybe(this.keyConv,
+			this.map.getNextKey(formatMaybe(this.keyConv, key)) )
+	}
+
+	freeze(): void {
+		return this.map.freeze()
+	}
+
+	has(key: K): boolean {
+		return this.map.has(this.keyConv.format(key))
+	}
+
+	*keys(start?: K): IterableIterator<K> {
+		for (const k of this.map.keys(formatMaybe(this.keyConv, start)))
+			yield this.keyConv.parse(k)
+	}
+
+	*entries(start?: K): IterableIterator<[K, V]> {
+		for (const [k, v] of this.map.entries(formatMaybe(this.keyConv, start)))
+			yield [this.keyConv.parse(k), this.valueConv.parse(v)]
+	}
+
+	*values(start?: K): IterableIterator<V> {
+		for (const v of this.map.values(formatMaybe(this.keyConv, start)))
+			yield this.valueConv.parse(v)
+	}
+
+	*consumeEntries(start?: K): IterableIterator<[K, V]> {
+		for (const [k, v] of this.map.consumeEntries(formatMaybe(this.keyConv, start)))
+			yield [this.keyConv.parse(k), this.valueConv.parse(v)]
+	}
+
+	clear(start?: K): void {
+		return this.map.clear(formatMaybe(this.keyConv, start))
+	}
+
+	[Symbol.iterator](): IterableIterator<[K, V]> {
+		return this.entries()
 	}
 }

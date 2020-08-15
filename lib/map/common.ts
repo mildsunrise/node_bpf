@@ -53,24 +53,10 @@ export interface TypeConversion<X> {
 	format(x: X): Buffer
 }
 
-export class OptionalTypeConversion<X> {
-	private readonly type: TypeConversion<X>
-	constructor(type: TypeConversion<X>) {
-		this.type = type
-	}
-
-	parse(x: Buffer): X
-	parse(x: Buffer | undefined): X | undefined
-	parse(x: Buffer | undefined): X | undefined {
-		return x === undefined ? undefined : this.type.parse(x)
-	}
-
-	format(x: X): Buffer
-	format(x: X | undefined): Buffer | undefined
-	format(x: X | undefined): Buffer | undefined {
-			return x === undefined ? undefined : this.type.format(x)
-	}
-}
+export const parseMaybe = <X>(type: TypeConversion<X>, x: Buffer | undefined): X | undefined =>
+    x === undefined ? undefined : type.parse(x)
+export const formatMaybe = <X>(type: TypeConversion<X>, x: X | undefined): Buffer | undefined =>
+    x === undefined ? undefined : type.format(x)
 
 /**
  * Create a new eBPF map. It is recommended to use [[close]]

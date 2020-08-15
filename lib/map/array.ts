@@ -1,6 +1,6 @@
 import { native, asUint8Array } from '../util'
 import { checkStatus } from '../exception'
-import { MapRef, TypeConversion, OptionalTypeConversion } from './common'
+import { MapRef, TypeConversion } from './common'
 import { MapType } from '../enums'
 
 /**
@@ -78,12 +78,12 @@ export interface IArrayMap<V> {
 	// Convenience functions
 
 	/**
-	 * Fetches all values of the array in one go using [[getBatched]].
+	 * Fetches all values of the array in one go using [[getBatch]].
 	 */
 	getAll(): V[]
 
 	/**
-	 * Sets all values of the array in one go using [[setBatched]].
+	 * Sets all values of the array in one go using [[setBatch]].
 	 * 
 	 * @params values New array values (must contain exactly `length`
 	 * items)
@@ -228,10 +228,58 @@ export class RawArrayMap implements IArrayMap<Buffer> {
  */
 export class ConvArrayMap<V> implements IArrayMap<V> {
 	private readonly map: RawArrayMap
-	private readonly valueConv: OptionalTypeConversion<V>
+	private readonly valueConv: TypeConversion<V>
+
+	get ref() {
+		return this.map.ref
+	}
 
 	constructor(ref: MapRef, valueConv: TypeConversion<V>) {
 		this.map = new RawArrayMap(ref)
-		this.valueConv = new OptionalTypeConversion(valueConv)
+		this.valueConv = valueConv
+	}
+
+	get length() {
+		return this.map.length
+	}
+
+	get(key: number, flags?: number): V {
+		return this.valueConv.parse(this.map.get(key, flags))
+	}
+
+	set(key: number, value: V, flags?: number): this {
+		this.map.set(key, this.valueConv.format(value), flags)
+		return this
+	}
+
+	getBatch(keys: number[]): V[] {
+		return this.map.getBatch(keys).map(v => this.valueConv.parse(v))
+	}
+
+	setBatch(entries: [number, V][]): this {
+		this.map.setBatch( entries.map(([k, v]) => [k, this.valueConv.format(v)]) )
+		return this
+	}
+
+	freeze(): void {
+		return this.map.freeze()
+	}
+
+	getAll(): V[] {
+		return this.map.getAll().map(v => this.valueConv.parse(v))
+	}
+
+	setAll(values: V[]): this {
+		this.map.setAll(values.map(v => this.valueConv.format(v)))
+		return this
+	}
+
+	*values(): IterableIterator<V> {
+		for (const v of this.map.values())
+			yield this.valueConv.parse(v)
+	}
+
+	[Symbol.iterator](): IterableIterator<V> {
+		return this.values()
 	}
 }
