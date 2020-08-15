@@ -1,4 +1,8 @@
 {
+    "variables": {
+        "need_reallocarray": "<!(libbpf/scripts/check-reallocarray.sh)",
+    },
+
     "targets": [
         {
             "target_name": "libbpf",
@@ -32,6 +36,11 @@
                     "libbpf/include/uapi",
                 ],
             },
+            "conditions": [
+                ['need_reallocarray != ""', {
+                    "defines": [ "COMPAT_NEED_REALLOCARRAY" ],
+                }],
+            ]
         },
     ]
 }
