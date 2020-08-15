@@ -1,6 +1,6 @@
 import { native, FD } from '../util'
 import { checkStatus } from '../exception'
-import { MapDesc, TypeConversion, OptionalTypeConversion } from './common'
+import { MapRef, TypeConversion, OptionalTypeConversion } from './common'
 const { ENOENT } = native
 
 /**
@@ -8,10 +8,10 @@ const { ENOENT } = native
  * with JavaScript `Map`.
  * 
  * In an eBPF map, keys and values are binary strings of a fixed length,
- * defined at map creation (see [[MapDesc]]). This interface converts
- * keys and values to 'parsed' representations using the
- * given [[TypeConversion]].
- *
+ * defined at map creation (see [[MapDesc]]). [[RawMap]] returns these
+ * directly as `Buffer` with no conversion, and [[ConvMap]] performs
+ * the conversion specified at construction time.
+ * 
  * Some operations are never atomic: iteration, in particular, doesn't
  * offer a consistent view of the map. Even 'atomic' operations
  * may not be atomic, depending on the underlying map implementation
@@ -148,13 +148,25 @@ export interface IMap<K, V> {
 	[Symbol.iterator](): IterableIterator<[K, V]>
 }
 
+/**
+ * Raw version of the [[IMap]] interface where keys and values
+ * are returned directly as `Buffer`s.
+ * 
+ * This interface converts keys and values to 'parsed'
+ * representations using the given [[TypeConversion]].
+ */
 export class RawMap implements IMap<Buffer, Buffer> {
-	readonly fd: FD
-	readonly desc: MapDesc
+	readonly ref: MapRef
 
-	constructor(fd: FD, desc: MapDesc) {
-		this.fd = fd
-		this.desc = Object.freeze({ ...desc })
+	/**
+	 * Manually construct a [[RawMap]] instance.
+	 * 
+	 * @param holder object that owns the FD (this is simply
+	 * stored to keep it from being destructed, so that the
+	 * FD stays open)
+	 */
+	constructor(ref: MapRef) {
+		this.ref = ref
 	}
 
 	private _checkBuf(size: number, x: Buffer) {
@@ -168,23 +180,23 @@ export class RawMap implements IMap<Buffer, Buffer> {
 		return this._checkBuf(size, x)
 	}
 	private _kBuf(x: Buffer) {
-		return this._checkBuf(this.desc.keySize, x)
+		return this._checkBuf(this.ref.keySize, x)
 	}
 	private _vBuf(x: Buffer) {
-		return this._checkBuf(this.desc.valueSize, x)
+		return this._checkBuf(this.ref.valueSize, x)
 	}
 	private _kOrBuf(x?: Buffer) {
-		return this._getBuf(this.desc.keySize, x)
+		return this._getBuf(this.ref.keySize, x)
 	}
 	private _vOrBuf(x?: Buffer) {
-		return this._getBuf(this.desc.valueSize, x)
+		return this._getBuf(this.ref.valueSize, x)
 	}
 	private _sliceKeys(x: Buffer, count: number) {
-		if (count * this.desc.keySize > x.length)
+		if (count * this.ref.keySize > x.length)
 			throw Error('Count exceeds array size')
 		const ret = []
 		for (let i = 0; i < count; i++)
-			ret.push(x.subarray(i * this.desc.keySize, (i + 1) * this.desc.keySize))
+			ret.push(x.subarray(i * this.ref.keySize, (i + 1) * this.ref.keySize))
 		return ret
 	}
 
@@ -194,7 +206,7 @@ export class RawMap implements IMap<Buffer, Buffer> {
 	get(key: Buffer, flags: number = 0, out?: Buffer): Buffer | undefined {
 		this._kBuf(key)
 		out = this._vOrBuf(out)
-		const status = native.mapLookupElem(this.fd, key, out, flags)
+		const status = native.mapLookupElem(this.ref.fd, key, out, flags)
 		if (status == -ENOENT)
 			return undefined
 		checkStatus('bpf_map_lookup_elem_flags', status)
@@ -204,7 +216,7 @@ export class RawMap implements IMap<Buffer, Buffer> {
 	getDelete(key: Buffer, out?: Buffer): Buffer | undefined {
 		this._kBuf(key)
 		out = this._vOrBuf(out)
-		const status = native.mapLookupAndDeleteElem(this.fd, key, out)
+		const status = native.mapLookupAndDeleteElem(this.ref.fd, key, out)
 		if (status == -ENOENT)
 			return undefined
 		checkStatus('bpf_map_lookup_and_delete_elem', status)
@@ -214,14 +226,14 @@ export class RawMap implements IMap<Buffer, Buffer> {
 	set(key: Buffer, value: Buffer, flags: number = 0): this {
 		this._kBuf(key)
 		this._vBuf(value)
-		const status = native.mapUpdateElem(this.fd, key, value, flags)
+		const status = native.mapUpdateElem(this.ref.fd, key, value, flags)
 		checkStatus('bpf_map_update_elem', status)
 		return this
 	}
 
 	delete(key: Buffer): boolean {
 		this._kBuf(key)
-		const status = native.mapDeleteElem(this.fd, key)
+		const status = native.mapDeleteElem(this.ref.fd, key)
 		if (status == -ENOENT)
 			return false
 		checkStatus('bpf_map_delete_elem', status)
@@ -247,7 +259,7 @@ export class RawMap implements IMap<Buffer, Buffer> {
 	deleteBatch(keys: Buffer[]): Buffer[] {
 		keys.forEach(key => this._kBuf(key))
 		const outKeys = Buffer.concat(keys)
-		const [ status, count ] = native.mapUpdateElem(this.fd,
+		const [ status, count ] = native.mapUpdateElem(this.ref.fd,
 			outKeys, keys.length)
 		checkStatus('bpf_map_delete_batch', status)
 		return this._sliceKeys(outKeys, count)
@@ -260,7 +272,7 @@ export class RawMap implements IMap<Buffer, Buffer> {
 		// FIXME: if no key passed, implement fallback like BCC does
 		key !== undefined && this._kBuf(key)
 		out = this._kOrBuf(out)
-		const status = native.mapGetNextKey(this.fd, key, out)
+		const status = native.mapGetNextKey(this.ref.fd, key, out)
 		if (status == -ENOENT)
 			return undefined
 		checkStatus('bpf_map_get_next_key', status)
@@ -268,7 +280,7 @@ export class RawMap implements IMap<Buffer, Buffer> {
 	}
 
 	freeze(): void {
-		const status = native.mapFreeze(this.fd)
+		const status = native.mapFreeze(this.ref.fd)
 		checkStatus('bpf_map_freeze', status)
 	}
 
@@ -320,10 +332,12 @@ export class RawMap implements IMap<Buffer, Buffer> {
 }
 
 export class ConvMap<K, V> {
-	private keyConv: OptionalTypeConversion<K>
-	private valueConv: OptionalTypeConversion<V>
+	private readonly map: RawMap
+	private readonly keyConv: OptionalTypeConversion<K>
+	private readonly valueConv: OptionalTypeConversion<V>
 
-	constructor(fd: FD, desc: MapDesc, keyConv: TypeConversion<K>, valueConv: TypeConversion<V>) {
+	constructor(ref: MapRef, keyConv: TypeConversion<K>, valueConv: TypeConversion<V>) {
+		this.map = new RawMap(ref)
 		this.keyConv = new OptionalTypeConversion(keyConv)
 		this.valueConv = new OptionalTypeConversion(valueConv)
 	}
