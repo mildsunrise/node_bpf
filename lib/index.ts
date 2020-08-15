@@ -16,5 +16,5 @@ export const version: string = versions.libbpf
 
 export { ProgramType, MapType, AttachType, MapFlags } from './enums'
 export { LibbpfErrno, BPFError, libbpfErrnoMessages } from './exception'
-export { MapDesc, TypeConversion } from './map/common'
+export { MapDesc, MapRef, TypeConversion, createMap } from './map/common'
 export { IMap, RawMap } from './map/map'

@@ -1,6 +1,9 @@
 #include <memory>
 #include <string>
+#include <sstream>
+#include <cassert>
 
+#include <unistd.h>
 #include <linux/btf.h>
 #include <sys/utsname.h>
 
@@ -58,6 +61,63 @@ uint8_t* GetOptionalBuffer(Napi::Env env, Napi::Value x) {
 Napi::Value ToStatus(Napi::Env env, int ret) {
     return Napi::Number::New(env, (ret < 0) ? -errno : ret);
 }
+
+class FDRef : public Napi::ObjectWrap<FDRef> {
+  public:
+    static Napi::Object Init(Napi::Env env, Napi::Object exports) {
+        Napi::Function func = DefineClass(env, "FDRef", {
+            InstanceMethod<&FDRef::Close>("close"),
+            InstanceAccessor("fd", &FDRef::GetFD, nullptr),
+            InstanceMethod<&FDRef::ToString>("toString"),
+        });
+        Napi::FunctionReference* constructor = new Napi::FunctionReference();
+        *constructor = Napi::Persistent(func);
+        exports["FDRef"] = func;
+        env.SetInstanceData<Napi::FunctionReference>(constructor);
+        return exports;
+    }
+
+    FDRef(const CallbackInfo& info) : Napi::ObjectWrap<FDRef>(info),
+        fd(Napi::Number(info.Env(), info[0])) {}
+    
+    ~FDRef() {
+        // Not sure if we should print a warning... FileHandle does, but
+        // file FDs are of different nature than kernel object references IMHO.
+        if (fd != -1) {
+            int status = close(fd);
+            assert(status == 0);
+            fd = -1;
+        }
+    }
+
+  private:
+    int fd;
+
+    Napi::Value GetFD(const CallbackInfo& info) {
+        Napi::Env env = info.Env();
+        if (fd == -1)
+            throw Napi::Error::New(env, "FD was closed");
+        return Napi::Number::New(env, fd);
+    }
+
+    void Close(const CallbackInfo& info) {
+        if (fd == -1)
+            return;
+        int status = close(fd);
+        assert(status == 0);
+        fd = -1;
+    }
+
+    Napi::Value ToString(const CallbackInfo& info) {
+        Napi::Env env = info.Env();
+        std::stringstream str;
+        str << "<FDRef: ";
+        if (fd == -1) str << "closed";
+        else str << fd;
+        str << ">";
+        return Napi::String::New(env, str.str());
+    }
+};
 
 Napi::Value MapUpdateElem(const CallbackInfo& info) {
     Napi::Env env = info.Env();
@@ -179,6 +239,24 @@ Napi::Value MapUpdateBatch(const CallbackInfo& info) {
     return ret;
 }
 
+Napi::Value CreateMap(const CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    Napi::Object desc (env, info[0]);
+    bpf_create_map_attr attr {};
+    attr.map_type = (bpf_map_type) GetNumber<uint32_t>(env, desc["type"]);
+    attr.map_flags = GetNumber<uint32_t>(env, desc["flags"]);
+    attr.key_size = GetNumber<uint32_t>(env, desc["keySize"]);
+    attr.value_size = GetNumber<uint32_t>(env, desc["valueSize"]);
+    attr.max_entries = GetNumber<uint32_t>(env, desc["maxEntries"]);
+    attr.numa_node = GetNumber<uint32_t>(env, desc["numaNode"], 0);
+    std::string name;
+    if (desc.Has("name")) {
+        name = GetString(env, desc["name"]);
+        attr.name = name.c_str();
+    }
+    return ToStatus(env, bpf_create_map_xattr(&attr));
+}
+
 #define EXPOSE_FUNCTION(NAME, METHOD) exports.Set(NAME, Napi::Function::New(env, METHOD, NAME))
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
@@ -192,6 +270,8 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
         versions["kernel"] = Napi::String::New(env, kernel_info.release);
     exports["versions"] = versions;
 
+    FDRef::Init(env, exports);
+
     exports["ENOENT"] = Napi::Number::New(env, ENOENT);
 
     EXPOSE_FUNCTION("mapUpdateElem", MapUpdateElem);
@@ -204,6 +284,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     EXPOSE_FUNCTION("mapLookupBatch", MapLookupBatch);
     EXPOSE_FUNCTION("mapLookupAndDeleteBatch", MapLookupAndDeleteBatch);
     EXPOSE_FUNCTION("mapUpdateBatch", MapUpdateBatch);
+    EXPOSE_FUNCTION("createMap", CreateMap);
 
     return exports;
 }
