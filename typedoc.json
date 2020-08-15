@@ -1,8 +1,8 @@
 {
-    "mode": "modules",
+    "mode": "library",
     "excludePrivate": true,
     "excludeProtected": true,
-    "excludeExternals": true,
+    "excludeExternals": false,
     "excludeNotExported": true,
     "target": "ES6",
     "listInvalidSymbolLinks": true
