@@ -4,8 +4,14 @@ cache:
         - ~/.npm
 notifications:
     email: false
+arch:
+    - amd64
+    - arm64
 node_js:
     - 12
+    - lts/*
+    - node
+os: linux
 script:
     - npm run test && npm run build
 
@@ -13,5 +19,5 @@ jobs:
     include:
         - stage: coverage
           name: Coverage
-          node_js: 12
+          node_js: 14
           script: npm run test; npm run report-coverage
