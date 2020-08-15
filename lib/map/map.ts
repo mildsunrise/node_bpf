@@ -1,4 +1,4 @@
-import { native, FD } from '../util'
+import { native, sliceBuffer } from '../util'
 import { checkStatus } from '../exception'
 import { MapRef, TypeConversion, OptionalTypeConversion } from './common'
 const { ENOENT } = native
@@ -151,9 +151,6 @@ export interface IMap<K, V> {
 /**
  * Raw version of the [[IMap]] interface where keys and values
  * are returned directly as `Buffer`s.
- * 
- * This interface converts keys and values to 'parsed'
- * representations using the given [[TypeConversion]].
  */
 export class RawMap implements IMap<Buffer, Buffer> {
 	readonly ref: MapRef
@@ -190,14 +187,6 @@ export class RawMap implements IMap<Buffer, Buffer> {
 	}
 	private _vOrBuf(x?: Buffer) {
 		return this._getBuf(this.ref.valueSize, x)
-	}
-	private _sliceKeys(x: Buffer, count: number) {
-		if (count * this.ref.keySize > x.length)
-			throw Error('Count exceeds array size')
-		const ret = []
-		for (let i = 0; i < count; i++)
-			ret.push(x.subarray(i * this.ref.keySize, (i + 1) * this.ref.keySize))
-		return ret
 	}
 
 
@@ -243,11 +232,11 @@ export class RawMap implements IMap<Buffer, Buffer> {
 
 	// Batched operations
 
-	getBatch(keys: Buffer[], out?: Buffer[]): (Buffer | undefined)[] {
+	getBatch(keys: Buffer[], out?: Buffer): (Buffer | undefined)[] {
 		throw Error('not implemented yet') // TODO
 	}
 
-	getDeleteBatch(keys: Buffer[], out?: Buffer[]): (Buffer | undefined)[] {
+	getDeleteBatch(keys: Buffer[], out?: Buffer): (Buffer | undefined)[] {
 		throw Error('not implemented yet') // TODO
 	}
 
@@ -262,7 +251,9 @@ export class RawMap implements IMap<Buffer, Buffer> {
 		const [ status, count ] = native.mapUpdateElem(this.ref.fd,
 			outKeys, keys.length)
 		checkStatus('bpf_map_delete_batch', status)
-		return this._sliceKeys(outKeys, count)
+		if (count > keys.length)
+			throw Error('Invalid count received')
+		return sliceBuffer(outKeys, count, this.ref.keySize)
 	}
 
 
@@ -331,7 +322,11 @@ export class RawMap implements IMap<Buffer, Buffer> {
 	}
 }
 
-export class ConvMap<K, V> {
+/**
+ * Implementation of [[IMap]] that converts keys and values
+ * to 'parsed' representations using the given [[TypeConversion]].
+ */
+export class ConvMap<K, V> implements IMap<K, V> {
 	private readonly map: RawMap
 	private readonly keyConv: OptionalTypeConversion<K>
 	private readonly valueConv: OptionalTypeConversion<V>

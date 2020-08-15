@@ -1,7 +1,9 @@
 import { createMap, MapType, RawMap } from '../lib'
+import { asBuffer, asUint32Array } from '../lib/util'
 
-const u32 = (x: number, buf: Buffer = Buffer.alloc(4)) => (buf.writeUInt32LE(x, 0), buf)
-const sortKeys = (x: Iterable<[Buffer, Buffer]>) => [...x].sort((a, b) => a[0].readUInt32LE(0) - b[0].readUInt32LE(0))
+const u32 = (x: number) => asBuffer(Uint32Array.of(x))
+const u32get = (x: Uint8Array) => asUint32Array(x)[0]
+const sortKeys = (x: Iterable<[Buffer, Buffer]>) => [...x].sort((a, b) => u32get(a[0]) - u32get(b[0]))
 
 describe('RawMap tests', () => {
 
