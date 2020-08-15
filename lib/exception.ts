@@ -73,6 +73,8 @@ export class BPFError extends Error {
     }
 
     static getCode(errno: number): string {
+        if (errno === 524)
+            return 'ENOTSUP'
         if (Object.hasOwnProperty.call(LibbpfErrno, errno))
             return LibbpfErrno[errno]
         return getSystemErrorName(-errno)
