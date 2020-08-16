@@ -1,6 +1,6 @@
 import { native, asUint8Array, checkU32 } from '../util'
 import { checkStatus } from '../exception'
-import { MapRef, TypeConversion, TypeConversionWrap } from './common'
+import { MapRef, TypeConversion, TypeConversionWrap, createMap } from './common'
 import { MapType } from '../enums'
 
 /**
@@ -282,4 +282,27 @@ export class ConvArrayMap<V> implements IArrayMap<V> {
 	[Symbol.iterator](): IterableIterator<V> {
 		return this.values()
 	}
+}
+
+/**
+ * Convenience function to create an `ARRAY` map using [[createMap]]
+ * and construct a [[ConvArrayMap]] instance.
+ * 
+ * @param length Array size, in items
+ * @param valueSize Size of each value, in bytes (will be
+ * rounded up to a multiple of 8)
+ * @param valueConv Type conversion for values
+ */
+export function createArrayMap<V>(
+	length: number,
+	valueSize: number,
+	valueConv: TypeConversion<V>
+): ConvArrayMap<V> {
+	const ref = createMap({
+		type: MapType.ARRAY,
+		keySize: 4,
+		maxEntries: length,
+		valueSize,
+	})
+	return new ConvArrayMap(ref, valueConv)
 }
