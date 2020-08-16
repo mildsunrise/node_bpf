@@ -173,8 +173,11 @@ Napi::Value MapFreeze(const CallbackInfo& info) {
 }
 
 bpf_map_batch_opts GetBatchOpts(Napi::Env env, Napi::Value x) {
+    Napi::Object obj (env, x);
     bpf_map_batch_opts ret {};
     ret.sz = sizeof(ret);
+    ret.elem_flags = GetNumber<uint32_t>(env, obj["elemFlags"], 0);
+    ret.flags = GetNumber<uint32_t>(env, obj["flags"], 0);
     return ret;
 }
 
@@ -198,13 +201,15 @@ Napi::Value MapLookupBatch(const CallbackInfo& info) {
     Napi::Env env = info.Env();
     size_t a = 0;
     auto fd = GetNumber<uint32_t>(env, info[a++]);
+    auto in_batch = info[a].IsUndefined() ? nullptr : GetBuffer(env, info[a]); a++;
+    auto out_batch = GetBuffer(env, info[a++]);
     auto keys = GetBuffer(env, info[a++]);
     auto values = GetBuffer(env, info[a++]);
     auto count = GetNumber<uint32_t>(env, info[a++]);
     auto opts = GetBatchOpts(env, info[a++]);
     
     auto ret = Napi::Array::New(env);
-    ret[0U] = ToStatus(env, bpf_map_lookup_batch(fd, NULL, NULL, keys, values, &count, &opts));
+    ret[0U] = ToStatus(env, bpf_map_lookup_batch(fd, in_batch, out_batch, keys, values, &count, &opts));
     ret[1U] = Napi::Number::New(env, count);
     return ret;
 }
@@ -213,13 +218,15 @@ Napi::Value MapLookupAndDeleteBatch(const CallbackInfo& info) {
     Napi::Env env = info.Env();
     size_t a = 0;
     auto fd = GetNumber<uint32_t>(env, info[a++]);
+    auto in_batch = info[a].IsUndefined() ? nullptr : GetBuffer(env, info[a]); a++;
+    auto out_batch = GetBuffer(env, info[a++]);
     auto keys = GetBuffer(env, info[a++]);
     auto values = GetBuffer(env, info[a++]);
     auto count = GetNumber<uint32_t>(env, info[a++]);
     auto opts = GetBatchOpts(env, info[a++]);
     
     auto ret = Napi::Array::New(env);
-    ret[0U] = ToStatus(env, bpf_map_lookup_and_delete_batch(fd, NULL, NULL, keys, values, &count, &opts));
+    ret[0U] = ToStatus(env, bpf_map_lookup_and_delete_batch(fd, in_batch, out_batch, keys, values, &count, &opts));
     ret[1U] = Napi::Number::New(env, count);
     return ret;
 }
