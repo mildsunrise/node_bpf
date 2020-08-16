@@ -111,11 +111,14 @@ export class RawArrayMap implements IArrayMap<Buffer> {
 	private _allIndexes: Uint8Array
 
 	/**
-	 * Manually construct a [[RawArrayMap]] instance.
+	 * Construct a new instance operating on the given map.
 	 * 
-	 * @param holder object that owns the FD (this is simply
-	 * stored to keep it from being destructed, so that the
-	 * FD stays open)
+	 * The map must be of `ARRAY` type.
+	 * 
+	 * @param ref Reference to the map. If you pass a
+	 * custom [[MapRef]], make sure the information is
+	 * correct. Failure to do so can result in **buffer
+	 * overflows**.
 	 */
 	constructor(ref: MapRef) {
 		if (ref.type !== MapType.ARRAY)
@@ -234,6 +237,17 @@ export class ConvArrayMap<V> implements IArrayMap<V> {
 		return this.map.ref
 	}
 
+	/**
+	 * Construct a new instance operating on the given map.
+	 * 
+	 * The map must be of `ARRAY` type.
+	 * 
+	 * @param ref Reference to the map. If you pass a
+	 * custom [[MapRef]], make sure the information is
+	 * correct. Failure to do so can result in **buffer
+	 * overflows**.
+	 * @param valueConv Type conversion for array values
+	 */
 	constructor(ref: MapRef, valueConv: TypeConversion<V>) {
 		this.map = new RawArrayMap(ref)
 		this.valueConv = new TypeConversionWrap(valueConv, ref.valueSize)

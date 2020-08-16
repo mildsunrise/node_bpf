@@ -4,17 +4,27 @@ import { MapType, MapFlags } from '../enums'
 
 /**
  * Parameters to create an eBPF map.
+ * 
+ * After the map is created, the parameters may be different
+ * because of rounding, truncating or type-dependent behaviour.
  */
 export interface MapDesc {
-	type: MapType
-	keySize: number
-	valueSize: number
+    /** Map type (defines the implementation / semantics) */
+    type: MapType
+    /** Size of every key, in bytes */
+    keySize: number
+    /** Size of every value, in bytes */
+    valueSize: number
+    /** Maximum amount of entries: the meaning of this is type-dependent */
 	maxEntries: number
 	/** Flags specified on map creation, see [[MapFlags]] */
     flags?: number
     
     // Optional
+
+    /** Map name (might get truncated if longer than allowed) */
     name?: string
+    /** NUMA node on which to store the map */
     numaNode?: number
 }
 
@@ -36,7 +46,7 @@ export interface MapRef extends MapDesc {
      * 
      * Throws if `close()` was successfully called.
      */
-    readonly fd: number
+    readonly fd: FD
 
     /**
      * Closes the FD early. Instances don't necessarily support
@@ -48,8 +58,15 @@ export interface MapRef extends MapDesc {
     close(): void
 }
 
+/**
+ * This interface implements a conversion between `Buffer`
+ * and a user-defined representation. See [[u32type]] for
+ * an example.
+ */
 export interface TypeConversion<X> {
-	parse(buf: Buffer): X
+    /** Parse a `Buffer` into user data */
+    parse(buf: Buffer): X
+    /** Write the user data into the passed `Buffer` */
 	format(buf: Buffer, x: X): void
 }
 
@@ -91,7 +108,8 @@ export const u32type: TypeConversion<number> = {
  * if you're no longer going to need it at some point.
  * 
  * @param desc Map parameters
- * @returns [[MapRef]] instance
+ * @returns [[MapRef]] instance, holding a reference
+ * to the newly created map, and its actual parameters
  */
 export function createMap(desc: MapDesc): MapRef {
     // prevent people from 

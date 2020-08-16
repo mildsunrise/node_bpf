@@ -25,17 +25,40 @@ const { ENOENT } = native
 export interface IMap<K, V> {
 	// Base operations
 
+	/**
+	 * Fetch the value for a single key.
+	 * 
+	 * @param key Entry key
+	 * @param flags Operation flags
+	 * @returns Entry value, or undefined if no such entry exists
+	 */
 	get(key: K, flags?: number): V | undefined
 
 	/**
-	 * Atomically deletes an entry and returns its former value.
+	 * Atomically deletes an entry and returns its former value,
+	 * or `undefined` if no entry was found.
 	 * 
 	 * @param key Entry key
 	 */
 	getDelete(key: K): V | undefined
 
+	/**
+	 * Add or override a single map entry.
+	 * 
+	 * @param key Entry key
+	 * @param value Entry value
+	 * @param flags Operation flags
+	 */
 	set(key: K, value: V, flags?: number): this
 
+	/**
+	 * Delete a single map entry.
+	 * 
+	 * Returns `true` if an entry was found
+	 * and deleted, `false` otherwise.
+	 * 
+	 * @param key Entry key
+	 */
 	delete(key: K): boolean
 
 
@@ -61,6 +84,10 @@ export interface IMap<K, V> {
 	 * Returns key immediately following the passed one,
 	 * or (if the key doesn't exist or isn't passed) the
 	 * first key.
+	 * 
+	 * Keep in mind that the order of keys depends on the
+	 * type of map, and isn't necessarily guaranteed to be
+	 * consistent.
 	 * 
 	 * **Note:** Not passing a key is only supported
 	 * on kernels 4.12 and above.
@@ -156,11 +183,12 @@ export class RawMap implements IMap<Buffer, Buffer> {
 	readonly ref: MapRef
 
 	/**
-	 * Manually construct a [[RawMap]] instance.
+	 * Construct a new instance operating on the given map.
 	 * 
-	 * @param holder object that owns the FD (this is simply
-	 * stored to keep it from being destructed, so that the
-	 * FD stays open)
+	 * @param ref Reference to the map. If you pass a
+	 * custom [[MapRef]], make sure the information is
+	 * correct. Failure to do so can result in **buffer
+	 * overflows**.
 	 */
 	constructor(ref: MapRef) {
 		this.ref = ref
@@ -335,6 +363,16 @@ export class ConvMap<K, V> implements IMap<K, V> {
 		return this.map.ref
 	}
 
+	/**
+	 * Construct a new instance operating on the given map.
+	 * 
+	 * @param ref Reference to the map. If you pass a
+	 * custom [[MapRef]], make sure the information is
+	 * correct. Failure to do so can result in **buffer
+	 * overflows**.
+	 * @param keyConv Type conversion for keys
+	 * @param valueConv Type conversion for values
+	 */
 	constructor(ref: MapRef, keyConv: TypeConversion<K>, valueConv: TypeConversion<V>) {
 		this.map = new RawMap(ref)
 		this.keyConv = new TypeConversionWrap(keyConv, ref.keySize)
