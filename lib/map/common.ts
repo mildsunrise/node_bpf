@@ -1,4 +1,4 @@
-import { native, FD, asUint32Array } from '../util'
+import { native, FD, asUint32Array, checkU32 } from '../util'
 import { checkStatus } from '../exception'
 import { MapType, MapFlags } from '../enums'
 
@@ -94,8 +94,13 @@ export const u32type: TypeConversion<number> = {
  * @returns [[MapRef]] instance
  */
 export function createMap(desc: MapDesc): MapRef {
+    // prevent people from 
+    checkU32(desc.keySize)
+    checkU32(desc.valueSize)
+    checkU32(desc.maxEntries)
+
     desc = { flags: 0, ...desc }
-    if (desc.numaNode)
+    if (desc.numaNode !== undefined)
         desc.flags! |= MapFlags.NUMA_NODE
 
     const status: number = native.createMap(desc)

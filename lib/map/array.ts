@@ -1,4 +1,4 @@
-import { native, asUint8Array } from '../util'
+import { native, asUint8Array, checkU32 } from '../util'
 import { checkStatus } from '../exception'
 import { MapRef, TypeConversion, TypeConversionWrap } from './common'
 import { MapType } from '../enums'
@@ -121,6 +121,7 @@ export class RawArrayMap implements IArrayMap<Buffer> {
 		if (ref.type !== MapType.ARRAY)
 			throw new Error(`Expected array map, got type ${MapType[ref.type] || ref.type}`)
 		this.ref = ref
+		this.length = checkU32(ref.maxEntries)
 
 		this._allIndexes = asUint8Array(new Uint32Array(this.length).map((_, i) => i))
 	}
@@ -142,14 +143,13 @@ export class RawArrayMap implements IArrayMap<Buffer> {
 		return this._getBuf(this.ref.valueSize, x)
 	}
 	private _checkIndex(x: number) {
-		if (x < 0 || x > this.length)
+		checkU32(x)
+		if (x >= this.length)
 			throw new RangeError(`Invalid index ${x} for array of length ${this.length}`)
 		return x
 	}
 
-	get length(): number {
-		return this.ref.maxEntries
-	}
+	readonly length: number
 
 
 	// Base operations
