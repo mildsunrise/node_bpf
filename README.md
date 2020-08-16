@@ -15,7 +15,9 @@ Node.js bindings to libbpf. BPF is a Virtual Machine (and associated bytecode de
 Not enough functionality for standalone use yet.
 
 There's an API to create ([`createMap`][]) and manipulate ([`IMap`][]) eBPF maps.  
-Apart from the generic `IMap`, there's a few other interfaces for specific semantics, such as [`IArrayMap`][] for `ARRAY` maps. These interfaces currently have only 'raw' implementations that operate with `Buffer` keys / values.
+Apart from the generic `IMap`, there's a few other interfaces for specific semantics, such as [`IArrayMap`][] for `ARRAY` maps.
+
+The interfaces have raw versions (which operate with binary `Buffer`s directly), or high-level versions which use a [conversion][`TypeConversion`] supplied by the user.
 
 ## Usage
 
@@ -38,3 +40,4 @@ libbpf is kernel agnostic, but not all of the exposed features may be supported 
 [`createMap`]: https://bpf.alba.sh/docs/globals.html#createmap
 [`IMap`]: https://bpf.alba.sh/docs/interfaces/imap.html
 [`IArrayMap`]: https://bpf.alba.sh/docs/interfaces/iarraymap.html
+[`TypeConversion`]: https://bpf.alba.sh/docs/interfaces/typeconversion.html
