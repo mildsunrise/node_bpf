@@ -1,4 +1,4 @@
-import { createMap, MapType, ConvMap, u32type } from '../lib'
+import { createMap, MapType, ConvMap, u32type, MapFlags } from '../lib'
 
 const sortKeys = (x: Iterable<[number, number]>) => [...x].sort((a, b) => a[0] - b[0])
 
@@ -12,6 +12,35 @@ describe('ConvMap tests', () => {
             maxEntries: 5,
         })).toThrowError('EINVAL')
 
+        expect(() => createMap({
+            type: MapType.HASH,
+            keySize: -1,
+            valueSize: 4,
+            maxEntries: 5,
+        })).toThrow('-1 is not a valid u32')
+
+        expect(() => createMap({
+            type: MapType.HASH,
+            keySize: 4,
+            valueSize: -1,
+            maxEntries: 5,
+        })).toThrow('-1 is not a valid u32')
+
+        expect(() => createMap({
+            type: MapType.HASH,
+            keySize: 4,
+            valueSize: 4,
+            maxEntries: -1,
+        })).toThrow('-1 is not a valid u32')
+
+        expect(createMap({
+            type: MapType.HASH,
+            keySize: 4,
+            valueSize: 4,
+            maxEntries: 5,
+            numaNode: 0,
+        }).flags).toBe(MapFlags.NUMA_NODE)
+
         const ref = createMap({
             name: "testMap",
             type: MapType.HASH,
@@ -19,6 +48,7 @@ describe('ConvMap tests', () => {
             valueSize: 4,
             maxEntries: 5,
         })
+        expect(ref.flags).toBe(0)
         const map = new ConvMap(ref, u32type, u32type)
 
         expect(map.ref).toBe(ref)
@@ -85,7 +115,15 @@ describe('ConvMap tests', () => {
         map.set(0, 4)
         map.set(2, 8)
         map.set(3, 7)
+
+        expect(sortKeys(map.entries(100))).toStrictEqual([ [0, 4], [2, 8], [3, 7] ])
+        expect([...map.keys(100)].sort()).toStrictEqual([ 0, 2, 3 ])
+        expect([...map.values(100)].sort()).toStrictEqual([ 4, 7, 8 ])
+        const firstKey = [...map.keys()][0]
+        expect([...map.keys(firstKey)].length).toBe(2)
+        expect([...map.entries(firstKey)].length).toBe(2)
         
+        // remember these tests will fail with older kernels
         expect(sortKeys(map)).toStrictEqual([ [0, 4], [2, 8], [3, 7] ])
         expect(sortKeys(map.entries())).toStrictEqual([ [0, 4], [2, 8], [3, 7] ])
         expect([...map.keys()].sort()).toStrictEqual([ 0, 2, 3 ])
