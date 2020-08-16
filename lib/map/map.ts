@@ -1,6 +1,6 @@
 import { native, sliceBuffer } from '../util'
 import { checkStatus } from '../exception'
-import { MapRef, TypeConversion, parseMaybe, formatMaybe } from './common'
+import { MapRef, TypeConversion, TypeConversionWrap } from './common'
 const { ENOENT } = native
 
 /**
@@ -328,8 +328,8 @@ export class RawMap implements IMap<Buffer, Buffer> {
  */
 export class ConvMap<K, V> implements IMap<K, V> {
 	private readonly map: RawMap
-	private readonly keyConv: TypeConversion<K>
-	private readonly valueConv: TypeConversion<V>
+	private readonly keyConv: TypeConversionWrap<K>
+	private readonly valueConv: TypeConversionWrap<V>
 
 	get ref() {
 		return this.map.ref
@@ -337,17 +337,17 @@ export class ConvMap<K, V> implements IMap<K, V> {
 
 	constructor(ref: MapRef, keyConv: TypeConversion<K>, valueConv: TypeConversion<V>) {
 		this.map = new RawMap(ref)
-		this.keyConv = keyConv
-		this.valueConv = valueConv
+		this.keyConv = new TypeConversionWrap(keyConv, ref.keySize)
+		this.valueConv = new TypeConversionWrap(valueConv, ref.valueSize)
 	}
 
 	get(key: K, flags?: number): V | undefined {
-		return parseMaybe(this.valueConv,
+		return this.valueConv.parseMaybe(
 			this.map.get(this.keyConv.format(key), flags))
 	}
 
 	getDelete(key: K): V | undefined {
-		return parseMaybe(this.valueConv,
+		return this.valueConv.parseMaybe(
 			this.map.getDelete(this.keyConv.format(key)))
 	}
 
@@ -362,12 +362,12 @@ export class ConvMap<K, V> implements IMap<K, V> {
 
 	getBatch(keys: K[]): (V | undefined)[] {
 		return this.map.getBatch(keys.map(k => this.keyConv.format(k)))
-			.map(v => parseMaybe(this.valueConv, v))
+			.map(v => this.valueConv.parseMaybe( v))
 	}
 
 	getDeleteBatch(keys: K[]): (V | undefined)[] {
 		return this.map.getDeleteBatch(keys.map(k => this.keyConv.format(k)))
-			.map(v => parseMaybe(this.valueConv, v))
+			.map(v => this.valueConv.parseMaybe( v))
 	}
 
 	setBatch(entries: [K, V][]): this {
@@ -382,8 +382,8 @@ export class ConvMap<K, V> implements IMap<K, V> {
 	}
 
 	getNextKey(key?: K): K | undefined {
-		return parseMaybe(this.keyConv,
-			this.map.getNextKey(formatMaybe(this.keyConv, key)) )
+		return this.keyConv.parseMaybe(
+			this.map.getNextKey(this.keyConv.formatMaybe(key)) )
 	}
 
 	freeze(): void {
@@ -395,27 +395,27 @@ export class ConvMap<K, V> implements IMap<K, V> {
 	}
 
 	*keys(start?: K): IterableIterator<K> {
-		for (const k of this.map.keys(formatMaybe(this.keyConv, start)))
+		for (const k of this.map.keys(this.keyConv.formatMaybe(start)))
 			yield this.keyConv.parse(k)
 	}
 
 	*entries(start?: K): IterableIterator<[K, V]> {
-		for (const [k, v] of this.map.entries(formatMaybe(this.keyConv, start)))
+		for (const [k, v] of this.map.entries(this.keyConv.formatMaybe(start)))
 			yield [this.keyConv.parse(k), this.valueConv.parse(v)]
 	}
 
 	*values(start?: K): IterableIterator<V> {
-		for (const v of this.map.values(formatMaybe(this.keyConv, start)))
+		for (const v of this.map.values(this.keyConv.formatMaybe(start)))
 			yield this.valueConv.parse(v)
 	}
 
 	*consumeEntries(start?: K): IterableIterator<[K, V]> {
-		for (const [k, v] of this.map.consumeEntries(formatMaybe(this.keyConv, start)))
+		for (const [k, v] of this.map.consumeEntries(this.keyConv.formatMaybe(start)))
 			yield [this.keyConv.parse(k), this.valueConv.parse(v)]
 	}
 
 	clear(start?: K): void {
-		return this.map.clear(formatMaybe(this.keyConv, start))
+		return this.map.clear(this.keyConv.formatMaybe(start))
 	}
 
 	[Symbol.iterator](): IterableIterator<[K, V]> {

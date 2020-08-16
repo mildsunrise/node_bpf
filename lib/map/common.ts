@@ -1,4 +1,4 @@
-import { native } from '../util'
+import { native, FD, asUint32Array } from '../util'
 import { checkStatus } from '../exception'
 import { MapType, MapFlags } from '../enums'
 
@@ -49,14 +49,42 @@ export interface MapRef extends MapDesc {
 }
 
 export interface TypeConversion<X> {
-	parse(x: Buffer): X
-	format(x: X): Buffer
+	parse(buf: Buffer): X
+	format(buf: Buffer, x: X): void
 }
 
-export const parseMaybe = <X>(type: TypeConversion<X>, x: Buffer | undefined): X | undefined =>
-    x === undefined ? undefined : type.parse(x)
-export const formatMaybe = <X>(type: TypeConversion<X>, x: X | undefined): Buffer | undefined =>
-    x === undefined ? undefined : type.format(x)
+export class TypeConversionWrap<X> {
+    readonly type: TypeConversion<X>
+    readonly size: number
+
+    constructor(type: TypeConversion<X>, size: number) {
+        this.type = type
+        this.size = size
+    }
+
+    parse(buf: Buffer): X {
+        return this.type.parse(buf)
+    }
+
+    parseMaybe(buf: Buffer | undefined): X | undefined {
+        return buf === undefined ? undefined : this.parse(buf)
+    }
+
+    format(x: X, out: Buffer = Buffer.alloc(this.size)): Buffer {
+        this.type.format(out, x)
+        return out
+    }
+
+    formatMaybe(x: X | undefined): Buffer | undefined {
+        return x === undefined ? undefined : this.format(x)
+    }
+}
+
+/** [[TypeConversion]] for a single `uint32`, for convenience */
+export const u32type: TypeConversion<number> = {
+    parse: (buf) => asUint32Array(buf, 1)[0],
+    format: (buf, x) => asUint32Array(buf, 1)[0] = x,
+}
 
 /**
  * Create a new eBPF map. It is recommended to use [[close]]

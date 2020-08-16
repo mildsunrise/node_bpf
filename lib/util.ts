@@ -9,21 +9,18 @@ type TypedArray =
     Uint8Array | Uint16Array | Uint32Array | BigUint64Array |
     Float32Array | Float64Array
 
-export const getBuffer = (x: TypedArray) =>
-    x.buffer.slice(x.byteOffset, x.byteOffset + x.byteLength)
+export const asBuffer = (x: TypedArray, length?: number, byteOffset: number = 0) => Buffer.from(x.buffer, x.byteOffset + byteOffset, length)
 
-export const asBuffer = (x: TypedArray) => new Buffer(getBuffer(x))
-
-export const asInt8Array = (x: TypedArray) => new Int8Array(getBuffer(x))
-export const asInt16Array = (x: TypedArray) => new Int16Array(getBuffer(x))
-export const asInt32Array = (x: TypedArray) => new Int32Array(getBuffer(x))
-export const asBigInt64Array = (x: TypedArray) => new BigInt64Array(getBuffer(x))
-export const asUint8Array = (x: TypedArray) => new Uint8Array(getBuffer(x))
-export const asUint16Array = (x: TypedArray) => new Uint16Array(getBuffer(x))
-export const asUint32Array = (x: TypedArray) => new Uint32Array(getBuffer(x))
-export const asBigUint64Array = (x: TypedArray) => new BigUint64Array(getBuffer(x))
-export const asFloat32Array = (x: TypedArray) => new Float32Array(getBuffer(x))
-export const asFloat64Array = (x: TypedArray) => new Float64Array(getBuffer(x))
+export const asInt8Array = (x: TypedArray, length?: number, byteOffset: number = 0) => new Int8Array(x.buffer, x.byteOffset + byteOffset, length)
+export const asInt16Array = (x: TypedArray, length?: number, byteOffset: number = 0) => new Int16Array(x.buffer, x.byteOffset + byteOffset, length)
+export const asInt32Array = (x: TypedArray, length?: number, byteOffset: number = 0) => new Int32Array(x.buffer, x.byteOffset + byteOffset, length)
+export const asBigInt64Array = (x: TypedArray, length?: number, byteOffset: number = 0) => new BigInt64Array(x.buffer, x.byteOffset + byteOffset, length)
+export const asUint8Array = (x: TypedArray, length?: number, byteOffset: number = 0) => new Uint8Array(x.buffer, x.byteOffset + byteOffset, length)
+export const asUint16Array = (x: TypedArray, length?: number, byteOffset: number = 0) => new Uint16Array(x.buffer, x.byteOffset + byteOffset, length)
+export const asUint32Array = (x: TypedArray, length?: number, byteOffset: number = 0) => new Uint32Array(x.buffer, x.byteOffset + byteOffset, length)
+export const asBigUint64Array = (x: TypedArray, length?: number, byteOffset: number = 0) => new BigUint64Array(x.buffer, x.byteOffset + byteOffset, length)
+export const asFloat32Array = (x: TypedArray, length?: number, byteOffset: number = 0) => new Float32Array(x.buffer, x.byteOffset + byteOffset, length)
+export const asFloat64Array = (x: TypedArray, length?: number, byteOffset: number = 0) => new Float64Array(x.buffer, x.byteOffset + byteOffset, length)
 
 // Other
 

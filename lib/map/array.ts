@@ -1,6 +1,6 @@
 import { native, asUint8Array } from '../util'
 import { checkStatus } from '../exception'
-import { MapRef, TypeConversion } from './common'
+import { MapRef, TypeConversion, TypeConversionWrap } from './common'
 import { MapType } from '../enums'
 
 /**
@@ -228,7 +228,7 @@ export class RawArrayMap implements IArrayMap<Buffer> {
  */
 export class ConvArrayMap<V> implements IArrayMap<V> {
 	private readonly map: RawArrayMap
-	private readonly valueConv: TypeConversion<V>
+	private readonly valueConv: TypeConversionWrap<V>
 
 	get ref() {
 		return this.map.ref
@@ -236,7 +236,7 @@ export class ConvArrayMap<V> implements IArrayMap<V> {
 
 	constructor(ref: MapRef, valueConv: TypeConversion<V>) {
 		this.map = new RawArrayMap(ref)
-		this.valueConv = valueConv
+		this.valueConv = new TypeConversionWrap(valueConv, ref.valueSize)
 	}
 
 	get length() {
