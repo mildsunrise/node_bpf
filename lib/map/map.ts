@@ -67,11 +67,11 @@ export interface IMap<K, V> {
 	getBatch(keys: K[]): (V | undefined)[]
 
 	/**
-	 * Atomically deletes a set of entries and returns their former values.
+	 * TODO: implement this
 	 * 
 	 * @param key Entry keys
 	 */
-	getDeleteBatch(keys: K[]): (V | undefined)[]
+	// getDeleteBatch(keys: K[]): (V | undefined)[]
 
 	setBatch(entries: [K, V][]): this
 
@@ -264,9 +264,9 @@ export class RawMap implements IMap<Buffer, Buffer> {
 		throw Error('not implemented yet') // TODO
 	}
 
-	getDeleteBatch(keys: Buffer[], out?: Buffer): (Buffer | undefined)[] {
+	/* getDeleteBatch(keys: Buffer[], out?: Buffer): (Buffer | undefined)[] {
 		throw Error('not implemented yet') // TODO
-	}
+	} */
 
 	setBatch(entries: [Buffer, Buffer][]): this {
 		throw Error('not implemented yet') // TODO
@@ -403,10 +403,10 @@ export class ConvMap<K, V> implements IMap<K, V> {
 			.map(v => this.valueConv.parseMaybe( v))
 	}
 
-	getDeleteBatch(keys: K[]): (V | undefined)[] {
+	/* getDeleteBatch(keys: K[]): (V | undefined)[] {
 		return this.map.getDeleteBatch(keys.map(k => this.keyConv.format(k)))
-			.map(v => this.valueConv.parseMaybe( v))
-	}
+			.map(v => this.valueConv.parseMaybe(v))
+	} */
 
 	setBatch(entries: [K, V][]): this {
 		this.map.setBatch(entries.map(
