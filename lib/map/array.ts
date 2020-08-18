@@ -63,7 +63,7 @@ export interface IArrayMap<V> {
 	 * @param batchSize Amount of entries to request per batch,
 	 * must be non-zero
 	 * @param flags Operation flags, see [[MapLookupFlags]]
-	 * @category Batched perations
+	 * @category Batched operations
 	 */
 	getBatch(batchSize: number, flags?: number): IterableIterator<V[]>
 
@@ -81,7 +81,7 @@ export interface IArrayMap<V> {
 	 * @param entries Array entries to set (indexes are not
 	 * necessarily unique or sorted).
 	 * @param flags Operation flags, see [[MapUpdateFlags]]
-	 * @category Batched perations
+	 * @category Batched operations
 	 */
 	setBatch(entries: [number, V][], flags?: number): this
 

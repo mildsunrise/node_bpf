@@ -115,7 +115,7 @@ export interface IMap<K, V> {
 	 * @param batchSize Amount of entries to request per batch,
 	 * must be non-zero
 	 * @param flags Operation flags, see [[MapLookupFlags]]
-	 * @category Batched perations
+	 * @category Batched operations
 	 */
 	getBatch(batchSize: number, flags?: number): IterableIterator<[K, V][]>
 
