@@ -7,8 +7,10 @@ const { getSystemErrorName } = util as any
  * Keep synchronized with `deps/libbpf/src/libbpf.h`.
  */
 export enum LibbpfErrno {
+    /** Something wrong in libelf */
+    LIBELF = 4000,
     /** BPF object format invalid */
-    FORMAT = 4000,
+    FORMAT,
     /** Incorrect or no 'version' section */
     KVERSION,
     /** Endian mismatch */
@@ -41,6 +43,7 @@ export enum LibbpfErrno {
  * Keep synchronized with `deps/libbpf/src/libbpf.h`.
  */
 export const libbpfErrnoMessages: { [errno: number]: string } = {
+    [LibbpfErrno.LIBELF]: 'Something wrong in libelf',
     [LibbpfErrno.FORMAT]: 'BPF object format invalid',
     [LibbpfErrno.KVERSION]: "Incorrect or no 'version' section",
     [LibbpfErrno.ENDIAN]: 'Endian mismatch',
