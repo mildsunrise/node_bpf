@@ -1,8 +1,8 @@
-import { createMap, MapType, ConvMap, u32type, MapFlags } from '../lib'
+import { createMap, MapType, ConvMap, RawMap, u32type, MapFlags } from '../lib'
+import { asUint32Array } from '../lib/util'
+import { concat, sortKeys, conditionalTest } from './util'
 
-const sortKeys = (x: Iterable<[number, number]>) => [...x].sort((a, b) => a[0] - b[0])
-
-describe('ConvMap tests', () => {
+describe('RawMap tests', () => {
 
     it('map creation', () => {
         expect(() => createMap({
@@ -49,15 +49,54 @@ describe('ConvMap tests', () => {
             maxEntries: 5,
         })
         expect(ref.flags).toBe(0)
-        const map = new ConvMap(ref, u32type, u32type)
+        const map = new RawMap(ref)
 
         expect(map.ref).toBe(ref)
         ref.fd // should not throw
         ref.close() // should not throw
         expect(() => ref.fd).toThrowError('FD was closed')
-        expect(() => map.get(0)).toThrowError('FD was closed')
+        expect(() => map.get(Buffer.alloc(4))).toThrowError('FD was closed')
         ref.close() // should not throw
     })
+
+    it('throws for invalid length buffers', () => {
+        const ref = createMap({
+            type: MapType.HASH,
+            keySize: 4,
+            valueSize: 4,
+            maxEntries: 5,
+        })
+        const map = new RawMap(ref)
+
+        expect(() => map.set(Buffer.alloc(5), Buffer.alloc(4))).toThrow()
+        expect(() => map.set(Buffer.alloc(4), Buffer.alloc(5))).toThrow()
+        map.set(Buffer.alloc(4), Buffer.alloc(4)) // should not throw
+
+        expect(() => map.get(Buffer.alloc(5))).toThrow()
+        map.get(Buffer.alloc(4)) // should not throw
+
+        expect(() => map.get(Buffer.alloc(4), 0, Buffer.alloc(5))).toThrow()
+        const out = Buffer.alloc(4)
+        expect(map.get(Buffer.alloc(4), 0, out)).toBe(out)
+    })
+
+    conditionalTest(true, 'getBatch should not share buffers', () => {
+        const ref = createMap({
+            type: MapType.HASH,
+            keySize: 4,
+            valueSize: 4,
+            maxEntries: 5,
+        })
+        const rawMap = new RawMap(ref)
+        const map = new ConvMap(ref, u32type, u32type)
+        map.set(0, 4).set(2, 8).set(3, 7).set(1, 10)
+        const entries = concat(...rawMap.getBatch(2)).map(e => e.map(x => asUint32Array(x)[0])) as [number, number][]
+        expect(sortKeys(entries)).toStrictEqual([ [0, 4], [1, 10], [2, 8], [3, 7] ])
+    })
+
+})
+
+describe('ConvMap tests', () => {
 
     it('basic HASH operations', () => {
         const ref = createMap({
@@ -68,7 +107,7 @@ describe('ConvMap tests', () => {
         })
         const map = new ConvMap(ref, u32type, u32type)
 
-        // ENOTSUP on some kernels, EINVAL on others
+        // EINVAL if kernel doesn't have the operation, ENOTSUPP if it does
         expect(() => map.getDelete(2)).toThrow()
         
         expect(sortKeys(map)).toStrictEqual([])
@@ -84,6 +123,10 @@ describe('ConvMap tests', () => {
         expect(sortKeys(map)).toStrictEqual([ [0, 4], [2, 5] ])
         expect(map.get(2)).toStrictEqual(5)
         expect(map.get(0)).toStrictEqual(4)
+
+        expect([0, 2].includes(map.getNextKey(7) as any)).toBeTruthy()
+        expect(map.has(0)).toBe(true)
+        expect(map.has(7)).toBe(false)
         
         map.set(2, 7)
         expect(sortKeys(map)).toStrictEqual([ [0, 4], [2, 7] ])
@@ -102,6 +145,8 @@ describe('ConvMap tests', () => {
 
         map.ref.close()
     })
+
+    // FIXME: test update flags
 
     it('iteration', () => {
         const ref = createMap({
@@ -136,6 +181,93 @@ describe('ConvMap tests', () => {
         map.ref.close()
     })
 
-    // FIXME: move getDelete / consumeEntries to a test with STACK
+    conditionalTest(false, 'freezing', () => {
+        const ref = createMap({
+            type: MapType.HASH,
+            keySize: 4,
+            valueSize: 4,
+            maxEntries: 5,
+        })
+        const map = new ConvMap(ref, u32type, u32type)
+        map.set(0, 4).set(2, 8).set(3, 7)
+        map.freeze()
+
+        expect(() => map.set(1, 5)).toThrow()
+        expect(() => map.set(0, 5)).toThrow()
+        expect(() => map.delete(0)).toThrow()
+        expect(() => map.delete(1)).toThrow()
+
+        expect(map.get(1)).toBeUndefined()
+        expect(map.get(0)).toBe(4)
+    })
+
+    conditionalTest(true, 'batched operations', () => {
+        const ref = createMap({
+            type: MapType.HASH,
+            keySize: 4,
+            valueSize: 4,
+            maxEntries: 5,
+        })
+        const map = new ConvMap(ref, u32type, u32type)
+
+        expect(() => [...map.getBatch(0)]).toThrow()
+        expect([...map.getBatch(2)]).toStrictEqual([])
+        expect([...map.getBatch(1)]).toStrictEqual([])
+        expect([...map.getBatch(5)]).toStrictEqual([])
+        expect([...map.getBatch(6)]).toStrictEqual([])
+
+        map.set(0, 4)
+        map.set(2, 8)
+        map.set(3, 7)
+
+        const entries = [ [0, 4], [2, 8], [3, 7] ]
+        expect(sortKeys( concat(...map.getBatch(2)) )).toStrictEqual(entries)
+        // expect(sortKeys( concat(...map.getBatch(1)) )).toStrictEqual(entries) (HASH implementation sometimes throws ENOSPC)
+        expect(sortKeys( concat(...map.getBatch(3)) )).toStrictEqual(entries)
+        expect(sortKeys( concat(...map.getBatch(5)) )).toStrictEqual(entries)
+        expect(sortKeys( concat(...map.getBatch(6)) )).toStrictEqual(entries)
+
+        map.setBatch([])
+        map.deleteBatch([ 0 ])
+        expect(sortKeys([...map])).toStrictEqual([ [2, 8], [3, 7] ])
+
+        map.setBatch([ [0, 4], [2, 100], [5, 50] ])
+        expect(sortKeys([...map])).toStrictEqual([ [0, 4], [2, 100], [3, 7], [5, 50] ])
+
+        map.deleteBatch([ 2, 3, 5 ])
+        expect(sortKeys([...map])).toStrictEqual([ [0, 4] ])
+
+        map.set(2, 8)
+        map.set(3, 7)
+        expect(() => map.deleteBatch([3, 7, 2])).toThrow()
+        expect(sortKeys([...map])).toStrictEqual([ [0, 4], [2, 8] ])
+
+        // FIXME: test flags with setBatch
+    })
+
+    it('ARRAY operations', () => {
+        const ref = createMap({
+            type: MapType.ARRAY,
+            keySize: 4,
+            valueSize: 4,
+            maxEntries: 5,
+        })
+        const map = new ConvMap(ref, u32type, u32type)
+
+        // EINVAL if kernel doesn't have the operation, ENOTSUPP if it does
+        expect(() => map.deleteBatch([])).toThrow()
+    })
+
+    conditionalTest(false, 'QUEUE / STACK operations', () => {
+        const ref = createMap({
+            type: MapType.QUEUE,
+            keySize: 4,
+            valueSize: 4,
+            maxEntries: 5,
+        })
+        const map = new ConvMap(ref, u32type, u32type)
+
+        // FIXME: move getDelete / consumeEntries to a test with STACK
+    })
 
 })
