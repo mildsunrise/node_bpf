@@ -2,6 +2,21 @@ export type FD = number
 
 export const native = require('../build/Release/bpf_binding.node')
 
+export const versions: {
+    /** libelf version used */
+    libelf: string
+    /** libbpf version used */
+    libbpf: string
+    /** supported BTF version */
+    btf: number
+    /** running kernel release */
+    kernel: string
+} = native.versions
+
+/** alias of `versions.libbpf` */
+export const version: string = versions.libbpf
+
+
 // TypedArray conversion utilities
 
 type TypedArray =
