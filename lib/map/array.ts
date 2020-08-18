@@ -12,9 +12,6 @@ const { ENOENT } = native
  * at construction time.
  * 
  * Keep in mind that `ARRAY` maps aren't atomic at all.
- * 
- * The [[getAll]] method is specific to this interface and fetches all
- * values of the array in one syscall.
  */
 export interface IArrayMap<V> {
 	/** Size of the array in items */
@@ -29,6 +26,8 @@ export interface IArrayMap<V> {
 	 * 
 	 * @param key Array index
 	 * @param flags Operation flags (since Linux 5.1), see [[MapLookupFlags]]
+	 * @returns Array value
+	 * @category Operations
 	 */
 	get(key: number, flags?: number): V
 
@@ -39,6 +38,7 @@ export interface IArrayMap<V> {
 	 * @param key Array index
 	 * @param value Nwe value
 	 * @param flags Operation flags (since Linux 3.19), see [[MapUpdateFlags]]
+	 * @category Operations
 	 */
 	set(key: number, value: V, flags?: number): this
 
@@ -58,15 +58,20 @@ export interface IArrayMap<V> {
 	 * with an error, the partial batch will be yielded before
 	 * throwing the error. If the map is empty, nothing is yielded.
 	 * 
+	 * Since Linux 5.6.
+	 * 
 	 * @param batchSize Amount of entries to request per batch,
 	 * must be non-zero
 	 * @param flags Operation flags, see [[MapLookupFlags]]
+	 * @category Batched perations
 	 */
 	getBatch(batchSize: number, flags?: number): IterableIterator<V[]>
 
 	/**
 	 * Sets a batch of array indexes to some values. Throws if
 	 * any of the indexes is invalid.
+	 * 
+	 * Since Linux 5.6.
 	 * 
 	 * Note that if an error is thrown, part of the entries
 	 * could already have been processed. The thrown error
@@ -76,6 +81,7 @@ export interface IArrayMap<V> {
 	 * @param entries Array entries to set (indexes are not
 	 * necessarily unique or sorted).
 	 * @param flags Operation flags, see [[MapUpdateFlags]]
+	 * @category Batched perations
 	 */
 	setBatch(entries: [number, V][], flags?: number): this
 
@@ -85,6 +91,10 @@ export interface IArrayMap<V> {
 	/**
 	 * Freezes the map, making it non-modifiable from userspace.
 	 * The map stays writeable from BPF side.
+	 * 
+	 * Since Linux 5.2.
+	 * 
+	 * @category Operations
 	 */
 	freeze(): void
 
@@ -93,6 +103,8 @@ export interface IArrayMap<V> {
 
 	/**
 	 * Fetches all values of the array using [[getBatch]].
+	 * 
+	 * @category Convenience
 	 */
 	getAll(): V[]
 
@@ -106,16 +118,21 @@ export interface IArrayMap<V> {
 	 * 
 	 * @params values New array values (must contain exactly `length`
 	 * items)
+	 * @category Convenience
 	 */
 	setAll(values: V[]): this
 
 	/**
 	 * Iterates through the values of the array.
+	 * 
+	 * @category Convenience
 	 */
 	values(): IterableIterator<V>
 
 	/**
 	 * Convenience function. Alias of [[values]].
+	 * 
+	 * @category Convenience
 	 */
 	[Symbol.iterator](): IterableIterator<V>
 }
@@ -176,7 +193,7 @@ export class RawArrayMap implements IArrayMap<Buffer> {
 
 	// Base operations
 
-	get(key: number, flags: number = 0, out?: Buffer): Buffer  {
+	get(key: number, flags: number = 0, out?: Buffer): Buffer {
 		const keyBuf = asUint8Array(Uint32Array.of(this._checkIndex(key)))
 		out = this._vOrBuf(out)
 		const status = native.mapLookupElem(this.ref.fd, keyBuf, out, flags)

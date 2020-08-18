@@ -33,7 +33,7 @@ Then, install this module:
 npm install bpf
 ~~~
 
-libbpf is kernel agnostic, but not all of the exposed features may be supported by the running kernel.
+libbpf is kernel agnostic, but not all of the exposed features may be supported by the running kernel, even if they are present in the API and typings. This extends to everything (functions, flags, map types, ...). For some notable cases, we make a mention in the docs, but for a full reference of features and their required kernel versions, go [here](https://github.com/iovisor/bcc/blob/master/docs/kernel-versions.md). If a feature isn't supported by your kernel and you try to use it, you'll likely get an `EINVAL` error.
 
 
 

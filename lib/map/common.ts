@@ -10,7 +10,11 @@ const { EFAULT } = native
  * because of rounding, truncating or type-dependent behaviour.
  */
 export interface MapDesc {
-    /** Map type (defines the implementation / semantics) */
+    /**
+     * Map type. This decides the available operations and
+     * their semantics. Keep in mind that not all of the types
+     * may be supported by your kernel.
+     */
     type: MapType
     /** Size of every key, in bytes */
     keySize: number
@@ -23,9 +27,9 @@ export interface MapDesc {
     
     // Optional
 
-    /** Map name (might get truncated if longer than allowed) */
+    /** Map name (might get truncated if longer than allowed) (since Linux 4.15) */
     name?: string
-    /** NUMA node on which to store the map */
+    /** NUMA node on which to store the map (since Linux 4.15) */
     numaNode?: number
 }
 

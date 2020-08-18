@@ -4,7 +4,7 @@ import { MapRef, TypeConversion, TypeConversionWrap, fixCount, checkAllProcessed
 const { ENOENT } = native
 
 /**
- * Generic interface to manipulate an eBPF map. API-compatible
+ * Generic interface to manipulate an eBPF map of any type. API-compatible
  * with JavaScript `Map`.
  * 
  * In an eBPF map, keys and values are binary strings of a fixed length,
@@ -12,15 +12,40 @@ const { ENOENT } = native
  * directly as `Buffer` with no conversion, and [[ConvMap]] performs
  * the conversion specified at construction time.
  * 
- * Some operations are never atomic: iteration, in particular, doesn't
- * offer a consistent view of the map. Even 'atomic' operations
- * may not be atomic, depending on the underlying map implementation
- * (see [[MapType]]).
+ * ### Operation semantics
  * 
- * Some methods, such as [[clear]], are convenience functions
- * and are implemented using one or more operations. [[clear]] in
- * particular is non-atomic. Refer to each method documentation for
- * details.
+ * The exact semantics of the operations (whether they're atomic or not,
+ * supported flags, etc.) depend on the chosen map type.
+ * 
+ * If your kernel doesn't implement a map operation, it will generally
+ * throw `EINVAL`. If it's implemented, but the map type doesn't
+ * have it, it will generally throw `ENOTSUPP`.
+ * 
+ * ### Convenience methods
+ * 
+ * Some methods, such as [[clear]], are implemented using one or more
+ * map operations. These are marked as convenience methods in their
+ * documentation.
+ * 
+ * Notably, **iterating methods** such as [[entries]], [[keys]],
+ * [[values]] and also [[clear]] are all convenience methods, implemented
+ * using a combination of [[getNextKey]] and another operation.
+ * 
+ * ### Batched operations
+ * 
+ * These are special map operations that process many entries.
+ * [[setBatch]] and [[deleteBatch]] are mostly equivalent to a
+ * repeated [[set]] or [[delete]] on each of the entries.
+ * [[getBatched]] iterates through the entries of the map
+ * and is mostly equivalent to [[entries]].
+ * 
+ * The difference is that all this is performed in the kernel
+ * through a single syscall, so they perform better than normal
+ * operations or iterating methods (especially when syscall overhead
+ * is a problem).
+ * 
+ * However they're much more recent and, like other operations,
+ * may not be available on your map type or kernel version.
  */
 export interface IMap<K, V> {
 	// Base operations
@@ -29,16 +54,22 @@ export interface IMap<K, V> {
 	 * Fetch the value for a single key.
 	 * 
 	 * @param key Entry key
-	 * @returns Entry value, or undefined if no such entry exists
 	 * @param flags Operation flags (since Linux 5.1), see [[MapLookupFlags]]
+	 * @returns Entry value, or `undefined` if no such entry exists
+	 * @category Operations
 	 */
 	get(key: K, flags?: number): V | undefined
 
 	/**
 	 * Atomically deletes an entry and returns its former value,
-	 * or `undefined` if no entry was found.
+	 * or `undefined` if no entry was found. This operation is
+	 * generally implemented only for stack / queue types.
+	 * 
+	 * Since Linux 4.20. Most map types probably won't implement
+	 * this operation.
 	 * 
 	 * @param key Entry key
+	 * @category Operations
 	 */
 	getDelete(key: K): V | undefined
 
@@ -48,6 +79,7 @@ export interface IMap<K, V> {
 	 * @param key Entry key
 	 * @param value Entry value
 	 * @param flags Operation flags (since Linux 3.19), see [[MapUpdateFlags]]
+	 * @category Operations
 	 */
 	set(key: K, value: V, flags?: number): this
 
@@ -58,6 +90,7 @@ export interface IMap<K, V> {
 	 * and deleted, `false` otherwise.
 	 * 
 	 * @param key Entry key
+	 * @category Operations
 	 */
 	delete(key: K): boolean
 
@@ -77,21 +110,30 @@ export interface IMap<K, V> {
 	 * with an error, the partial batch will be yielded before
 	 * throwing the error. If the map is empty, nothing is yielded.
 	 * 
+	 * Since Linux 5.6.
+	 * 
 	 * @param batchSize Amount of entries to request per batch,
 	 * must be non-zero
 	 * @param flags Operation flags, see [[MapLookupFlags]]
+	 * @category Batched perations
 	 */
 	getBatch(batchSize: number, flags?: number): IterableIterator<[K, V][]>
 
 	/**
 	 * TODO: implement this
 	 * 
+	 * Since Linux 5.6. Map types may implement this operation
+	 * without implementing [[getDelete]], or viceversa.
+	 * 
 	 * @param key Entry keys
+	 * @category Batched operations
 	 */
 	// getDeleteBatch(keys: K[]): (V | undefined)[]
 
 	/**
 	 * Perform [[set]] operation on the passed entries.
+	 * 
+	 * Since Linux 5.6.
 	 * 
 	 * Note that if an error is thrown, part of the entries
 	 * could already have been processed. The thrown error
@@ -100,11 +142,14 @@ export interface IMap<K, V> {
 	 * 
 	 * @param entries Entries to set
 	 * @param flags Operation flags, see [[MapUpdateFlags]]
+	 * @category Batched operations
 	 */
 	setBatch(entries: [K, V][], flags?: number): this
 
 	/**
 	 * Perform [[delete]] operation on the passed entries.
+	 * 
+	 * Since Linux 5.6.
 	 * 
 	 * Unlike in [[delete]], an entry isn't found,
 	 * `ENOENT` will be thrown and no more entries will
@@ -116,6 +161,7 @@ export interface IMap<K, V> {
 	 * corresponds to the amount of processed entries.
 	 * 
 	 * @param keys Entry keys to delete
+	 * @category Batched operations
 	 */
 	deleteBatch(keys: K[]): void
 
@@ -135,13 +181,18 @@ export interface IMap<K, V> {
 	 * on kernels 4.12 and above.
 	 * 
 	 * @param key Current key
-	 * @returns Next key, or undefined if no such key exists.
+	 * @returns Next key, or `undefined` if no such key exists.
+	 * @category Operations
 	 */
 	getNextKey(key?: K): K | undefined
 
 	/**
 	 * Freezes the map, making it non-modifiable from userspace.
 	 * The map stays writeable from BPF side.
+	 * 
+	 * Since Linux 5.2.
+	 * 
+	 * @category Operations
 	 */
 	freeze(): void
 
@@ -152,6 +203,7 @@ export interface IMap<K, V> {
 	 * Convenience function. Tests if the map has an entry.
 	 * 
 	 * @param key Entry key
+	 * @category Convenience
 	 */
 	has(key: K): boolean
 
@@ -164,6 +216,8 @@ export interface IMap<K, V> {
 	 * See [[getNextKey]].
 	 * 
 	 * This is a wrapper around [[getNextKey]].
+	 * 
+	 * @category Convenience
 	 */
 	keys(start?: K): IterableIterator<K>
 
@@ -176,6 +230,8 @@ export interface IMap<K, V> {
 	 * See [[getNextKey]].
 	 * 
 	 * This is a wrapper around [[getNextKey]] and [[get]].
+	 * 
+	 * @category Convenience
 	 */
 	entries(start?: K): IterableIterator<[K, V]>
 
@@ -186,6 +242,8 @@ export interface IMap<K, V> {
 	 * See [[getNextKey]].
 	 * 
 	 * This is a wrapper around [[getNextKey]] and [[get]].
+	 * 
+	 * @category Convenience
 	 */
 	values(start?: K): IterableIterator<V>
 
@@ -193,10 +251,9 @@ export interface IMap<K, V> {
 	 * Convenience function. Non-atomically iterates through the map's entries,
 	 * deleting them while iterating.
 	 * 
-	 * **Note:** For kernels older than 4.12, a start key must be passed.
-	 * See [[getNextKey]].
-	 * 
 	 * This is a wrapper around [[getNextKey]] and [[getDelete]].
+	 * 
+	 * @category Convenience
 	 */
 	consumeEntries(start?: K): IterableIterator<[K, V]>
 
@@ -208,11 +265,15 @@ export interface IMap<K, V> {
 	 * See [[getNextKey]].
 	 * 
 	 * This is a wrapper around [[getNextKey]] and [[delete]].
+	 * 
+	 * @category Convenience
 	 */
 	clear(start?: K): void
 
 	/**
 	 * Convenience function. Alias of [[entries]].
+	 * 
+	 * @category Convenience
 	 */
 	[Symbol.iterator](): IterableIterator<[K, V]>
 }
