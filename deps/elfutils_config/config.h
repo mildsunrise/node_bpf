@@ -30,7 +30,7 @@
 #define HAVE_DECL_RAWMEMCHR 1
 
 /* Defined if __attribute__((fallthrough)) is supported */
-#define HAVE_FALLTHROUGH 1
+/* #undef HAVE_FALLTHROUGH */
 
 /* Defined if __attribute__((gcc_struct)) is supported */
 #define HAVE_GCC_STRUCT 1

@@ -11,6 +11,7 @@
             "elfutils",
             "elfutils_config",
         ],
+        "cflags": [ "-std=gnu99" ],
         "defines": [
             "HAVE_CONFIG_H",
             "_GNU_SOURCE",
