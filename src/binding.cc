@@ -280,6 +280,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     FDRef::Init(env, exports);
 
     exports["ENOENT"] = Napi::Number::New(env, ENOENT);
+    exports["EFAULT"] = Napi::Number::New(env, EFAULT);
 
     EXPOSE_FUNCTION("mapUpdateElem", MapUpdateElem);
     EXPOSE_FUNCTION("mapLookupElem", MapLookupElem);

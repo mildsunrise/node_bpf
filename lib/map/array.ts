@@ -1,7 +1,8 @@
-import { native, asUint8Array, checkU32 } from '../util'
+import { native, asUint8Array, checkU32, sliceBuffer } from '../util'
 import { checkStatus } from '../exception'
-import { MapRef, TypeConversion, TypeConversionWrap, createMap } from './common'
+import { MapRef, TypeConversion, TypeConversionWrap, createMap, fixCount, checkAllProcessed } from './common'
 import { MapType } from '../enums'
+const { ENOENT } = native
 
 /**
  * Specialized version of [[IMap]] for `ARRAY` maps.
@@ -45,25 +46,38 @@ export interface IArrayMap<V> {
 	// Batched operations
 
 	/**
-	 * Fetches a batch of array indexes. Throws if any of the
-	 * indexes is invalid.
-	 *
-	 * @param keys Array indexes to fetch (not necessarily unique
-	 * or sorted)
-	 * @returns Array values corresponding to each index of `keys`
+	 * Iterate through the array values.
+	 * 
+	 * This works like [[values]] but the iteration is performed
+	 * in the kernel, returning many items at once. The
+	 * interator yields each batch produced by the kernel, until
+	 * an error is found or there are no more entries.
+	 * 
+	 * `batchSize` specifies the requested size, but batches may
+	 * be smaller. If the kernel returns a partial batch together
+	 * with an error, the partial batch will be yielded before
+	 * throwing the error. If the map is empty, nothing is yielded.
+	 * 
+	 * @param batchSize Amount of entries to request per batch,
+	 * must be non-zero
+	 * @param flags Operation flags, see [[MapLookupFlags]]
 	 */
-	getBatch(keys: number[]): V[]
+	getBatch(batchSize: number, flags?: number): IterableIterator<V[]>
 
 	/**
 	 * Sets a batch of array indexes to some values. Throws if
 	 * any of the indexes is invalid.
 	 * 
+	 * Note that if an error is thrown, part of the entries
+	 * could already have been processed. The thrown error
+	 * includes a `count` field that, if not undefined,
+	 * corresponds to the amount of processed entries.
+	 * 
 	 * @param entries Array entries to set (indexes are not
 	 * necessarily unique or sorted).
-	 * 
-	 * FIXME: what happens if indexes are not unique?
+	 * @param flags Operation flags, see [[MapUpdateFlags]]
 	 */
-	setBatch(entries: [number, V][]): this
+	setBatch(entries: [number, V][], flags?: number): this
 
 
 	// Other operations
@@ -78,12 +92,17 @@ export interface IArrayMap<V> {
 	// Convenience functions
 
 	/**
-	 * Fetches all values of the array in one go using [[getBatch]].
+	 * Fetches all values of the array using [[getBatch]].
 	 */
 	getAll(): V[]
 
 	/**
-	 * Sets all values of the array in one go using [[setBatch]].
+	 * Sets all values of the array using [[setBatch]].
+	 * 
+	 * Note that if an error is thrown, part of the entries
+	 * could already have been processed. The thrown error
+	 * includes a `count` field that, if not undefined,
+	 * corresponds to the amount of processed entries.
 	 * 
 	 * @params values New array values (must contain exactly `length`
 	 * items)
@@ -178,18 +197,57 @@ export class RawArrayMap implements IArrayMap<Buffer> {
 
 	// Batched operations
 
-	getBatch(keys: number[], out?: Buffer): Buffer[] {
-		keys.forEach(x => this._checkIndex(x))
-		const keyBuf = asUint8Array(Uint32Array.from(keys))
-		out = this._getBuf(this.ref.valueSize * keys.length, out)
-		throw Error('not implemented yet') // TODO
+	*getBatch(batchSize: number, flags: number = 0): IterableIterator<Buffer[]> {
+		if (checkU32(batchSize) === 0)
+			throw Error('Invalid batch size')
+		let idx = 0
+		const keysIdx = new Uint32Array(batchSize)
+		const keysOut = asUint8Array(keysIdx)
+		const valuesOut = Buffer.alloc(batchSize * this.ref.valueSize)
+		const opts = { elemFlags: flags }
+
+		let batchIn: Buffer | undefined
+		let batchOut: Buffer | undefined
+		while (true) {
+			if (batchOut === undefined)
+				batchOut = Buffer.alloc(this.ref.keySize)
+			let [ status, count ] = native.mapLookupBatch(this.ref.fd,
+				batchIn, batchOut, keysOut, valuesOut, batchSize, opts)
+			; [ batchIn, batchOut ] = [ batchOut, batchIn ]
+
+			// there's an exception for ENOENT, apparently
+			// https://github.com/torvalds/linux/blob/06a4ec1d9dc652e17ee3ac2ceb6c7cf6c2b75cdd/kernel/bpf/hashtab.c#L1530
+			if (status !== -ENOENT)
+				count = fixCount(count, batchSize, status)
+
+			if (count > 0) {
+				const entries: Buffer[] = []
+				const copySlice = (i: number, buf: Buffer, size: number) => {
+					const offset = i * size
+					return Buffer.from(buf.slice(offset, offset + size))
+				}
+				for (let i = 0; i < count; i++) {
+					if (keysIdx[i] !== (idx++))
+						throw Error('Non-sequential indexes')
+					entries.push(copySlice(i, valuesOut, this.ref.valueSize))
+				}
+				yield entries
+			}
+			if (status === -ENOENT)
+				return
+			checkStatus('bpf_map_lookup_batch', status)
+		}
 	}
 
-	setBatch(entries: [number, Buffer][]): this {
+	setBatch(entries: [number, Buffer][], flags: number = 0): this {
 		const keysBuf = asUint8Array(
 			Uint32Array.from(entries, x => this._checkIndex(x[0])) )
 		const valuesBuf = Buffer.concat(entries.map(x => x[1]))
-		throw Error('not implemented yet') // TODO
+		let [ status, count ] = native.mapUpdateBatch(this.ref.fd,
+			keysBuf, valuesBuf, entries.length, { elemFlags: flags })
+		count = fixCount(count, entries.length, status)
+		checkStatus('bpf_map_update_batch', status, count)
+		checkAllProcessed(count, entries.length)
 		return this
 	}
 
@@ -205,13 +263,29 @@ export class RawArrayMap implements IArrayMap<Buffer> {
 	// Convenience functions
 
 	getAll(): Buffer[] {
-		throw Error('not implemented yet') // TODO
+		const keysOut = Buffer.alloc(this.length * this.ref.keySize)
+		const valuesOut = Buffer.alloc(this.length * this.ref.valueSize)
+		const batchOut = Buffer.alloc(this.ref.keySize)
+		let [ status, count ] = native.mapLookupBatch(this.ref.fd,
+			undefined, batchOut, keysOut, valuesOut, this.length, {})
+		if (status !== -ENOENT)
+			checkStatus('bpf_map_lookup_batch', status)
+		if (count !== this.length)
+			throw Error(`Expected ${this.length} elements but received ${count}`)
+		if (!keysOut.equals(this._allIndexes))
+			throw Error('Non-sequential indexes')
+		return sliceBuffer(valuesOut, count, this.ref.valueSize)
 	}
 
 	setAll(values: Buffer[]): this {
 		if (values.length !== this.length)
 			throw new Error(`Expected ${this.length} values, got ${values.length}`)
-		throw Error('not implemented yet') // TODO
+		const valuesBuf = Buffer.concat(values.map(x => this._vBuf(x)))
+		let [ status, count ] = native.mapUpdateBatch(this.ref.fd,
+			this._allIndexes, valuesBuf, this.length, {})
+		count = fixCount(count, this.length, status)
+		checkStatus('bpf_map_update_batch', status, count)
+		checkAllProcessed(count, this.length)
 		return this
 	}
 
@@ -266,12 +340,13 @@ export class ConvArrayMap<V> implements IArrayMap<V> {
 		return this
 	}
 
-	getBatch(keys: number[]): V[] {
-		return this.map.getBatch(keys).map(v => this.valueConv.parse(v))
+	*getBatch(batchSize: number, flags?: number): IterableIterator<V[]> {
+		for (const values of this.map.getBatch(batchSize, flags))
+			yield values.map(v => this.valueConv.parse(v))
 	}
 
-	setBatch(entries: [number, V][]): this {
-		this.map.setBatch( entries.map(([k, v]) => [k, this.valueConv.format(v)]) )
+	setBatch(entries: [number, V][], flags?: number): this {
+		this.map.setBatch( entries.map(([k, v]) => [k, this.valueConv.format(v)]), flags )
 		return this
 	}
 

@@ -63,8 +63,9 @@ export class BPFError extends Error {
     operation: string
     errno: number | LibbpfErrno
     code?: string
+    count?: number
 
-    constructor(errno: number, operation: string) {
+    constructor(errno: number, operation: string, count?: number) {
         const code = BPFError.getCode(errno)
         const message = Object.hasOwnProperty.call(libbpfErrnoMessages, errno) ? libbpfErrnoMessages[errno] : null
         super(message || code)
@@ -73,6 +74,8 @@ export class BPFError extends Error {
         this.operation = operation
         this.errno = errno
         this.code = code
+        if (count !== undefined)
+            this.count = count
     }
 
     static getCode(errno: number): string {
@@ -85,7 +88,7 @@ export class BPFError extends Error {
     }
 }
 
-export function checkStatus(operation: string, status: number) {
+export function checkStatus(operation: string, status: number, count?: number) {
     if (status < 0)
-        throw new BPFError(-status, operation)
+        throw new BPFError(-status, operation, count)
 }

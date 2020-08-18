@@ -1,6 +1,7 @@
 import { native, FD, asUint32Array, checkU32 } from '../util'
 import { checkStatus } from '../exception'
 import { MapType, MapFlags } from '../enums'
+const { EFAULT } = native
 
 /**
  * Parameters to create an eBPF map.
@@ -125,4 +126,22 @@ export function createMap(desc: MapDesc): MapRef {
     checkStatus('bpf_create_map_xattr', status)
     const ref = new native.FDRef(status)
     return Object.freeze(Object.assign(ref, desc))
+}
+
+// Utils for map interfaces
+
+export function fixCount(count: number | undefined, batchSize: number, status: number) {
+	if (status < 0 && count === batchSize) {
+		// it's impossible to have an error if all entries were processed,
+		// that must mean count wasn't updated
+		count = (status === -EFAULT) ? undefined : 0
+	}
+	return count
+}
+
+export function checkAllProcessed(count: number | undefined, batchSize: number) {
+	if (count !== batchSize) {
+		// it's impossible to have no error if some entries weren't processed
+		throw Error(`Assertion failed: ${count} of ${batchSize} entries processed`)
+	}
 }

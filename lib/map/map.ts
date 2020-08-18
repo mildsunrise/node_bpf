@@ -1,6 +1,6 @@
-import { native, sliceBuffer } from '../util'
+import { native, checkU32 } from '../util'
 import { checkStatus } from '../exception'
-import { MapRef, TypeConversion, TypeConversionWrap } from './common'
+import { MapRef, TypeConversion, TypeConversionWrap, fixCount, checkAllProcessed } from './common'
 const { ENOENT } = native
 
 /**
@@ -64,7 +64,24 @@ export interface IMap<K, V> {
 
 	// Batched operations
 
-	getBatch(keys: K[]): (V | undefined)[]
+	/**
+	 * Iterate through the map entries.
+	 * 
+	 * This works like [[entries]] but the iteration is performed
+	 * in the kernel, returning many items at once. The
+	 * interator yields each batch produced by the kernel, until
+	 * an error is found or there are no more entries.
+	 * 
+	 * `batchSize` specifies the requested size, but batches may
+	 * be smaller. If the kernel returns a partial batch together
+	 * with an error, the partial batch will be yielded before
+	 * throwing the error. If the map is empty, nothing is yielded.
+	 * 
+	 * @param batchSize Amount of entries to request per batch,
+	 * must be non-zero
+	 * @param flags Operation flags, see [[MapLookupFlags]]
+	 */
+	getBatch(batchSize: number, flags?: number): IterableIterator<[K, V][]>
 
 	/**
 	 * TODO: implement this
@@ -73,9 +90,34 @@ export interface IMap<K, V> {
 	 */
 	// getDeleteBatch(keys: K[]): (V | undefined)[]
 
-	setBatch(entries: [K, V][]): this
+	/**
+	 * Perform [[set]] operation on the passed entries.
+	 * 
+	 * Note that if an error is thrown, part of the entries
+	 * could already have been processed. The thrown error
+	 * includes a `count` field that, if not undefined,
+	 * corresponds to the amount of processed entries.
+	 * 
+	 * @param entries Entries to set
+	 * @param flags Operation flags, see [[MapUpdateFlags]]
+	 */
+	setBatch(entries: [K, V][], flags?: number): this
 
-	deleteBatch(keys: K[]): K[]
+	/**
+	 * Perform [[delete]] operation on the passed entries.
+	 * 
+	 * Unlike in [[delete]], an entry isn't found,
+	 * `ENOENT` will be thrown and no more entries will
+	 * be processed.
+	 * 
+	 * Note that if an error is thrown, part of the entries
+	 * could already have been processed. The thrown error
+	 * includes a `count` field that, if not undefined,
+	 * corresponds to the amount of processed entries.
+	 * 
+	 * @param keys Entry keys to delete
+	 */
+	deleteBatch(keys: K[]): void
 
 
 	// Other operations
@@ -260,28 +302,67 @@ export class RawMap implements IMap<Buffer, Buffer> {
 
 	// Batched operations
 
-	getBatch(keys: Buffer[], out?: Buffer): (Buffer | undefined)[] {
-		throw Error('not implemented yet') // TODO
+	*getBatch(batchSize: number, flags: number = 0): IterableIterator<[Buffer, Buffer][]> {
+		if (checkU32(batchSize) === 0)
+			throw Error('Invalid batch size')
+		const keysOut = Buffer.alloc(batchSize * this.ref.keySize)
+		const valuesOut = Buffer.alloc(batchSize * this.ref.valueSize)
+		const opts = { elemFlags: flags }
+
+		let batchIn: Buffer | undefined
+		let batchOut: Buffer | undefined
+		while (true) {
+			if (batchOut === undefined)
+				batchOut = Buffer.alloc(this.ref.keySize)
+			let [ status, count ] = native.mapLookupBatch(this.ref.fd,
+				batchIn, batchOut, keysOut, valuesOut, batchSize, opts)
+			; [ batchIn, batchOut ] = [ batchOut, batchIn ]
+
+			// there's an exception for ENOENT, apparently
+			// https://github.com/torvalds/linux/blob/06a4ec1d9dc652e17ee3ac2ceb6c7cf6c2b75cdd/kernel/bpf/hashtab.c#L1530
+			if (status !== -ENOENT)
+				count = fixCount(count, batchSize, status)
+
+			if (count > 0) {
+				const entries: [Buffer, Buffer][] = []
+				const copySlice = (i: number, buf: Buffer, size: number) => {
+					const offset = i * size
+					return Buffer.from(buf.slice(offset, offset + size))
+				}
+				for (let i = 0; i < count; i++)
+					entries.push([ copySlice(i, keysOut, this.ref.keySize),
+						copySlice(i, valuesOut, this.ref.valueSize) ])
+				yield entries
+			}
+			if (status === -ENOENT)
+				return
+			checkStatus('bpf_map_lookup_batch', status)
+		}
 	}
 
 	/* getDeleteBatch(keys: Buffer[], out?: Buffer): (Buffer | undefined)[] {
 		throw Error('not implemented yet') // TODO
 	} */
 
-	setBatch(entries: [Buffer, Buffer][]): this {
-		throw Error('not implemented yet') // TODO
+	setBatch(entries: [Buffer, Buffer][], flags: number = 0): this {
+		const keysBuf = Buffer.concat(entries.map(x => this._kBuf(x[0])))
+		const valuesBuf = Buffer.concat(entries.map(x => this._vBuf(x[1])))
+		let [ status, count ] = native.mapUpdateBatch(this.ref.fd,
+			keysBuf, valuesBuf, entries.length, { elemFlags: flags })
+		count = fixCount(count, entries.length, status)
+		checkStatus('bpf_map_update_batch', status, count)
+		checkAllProcessed(count, entries.length)
 		return this
 	}
 
-	deleteBatch(keys: Buffer[]): Buffer[] {
+	deleteBatch(keys: Buffer[]): void {
 		keys.forEach(key => this._kBuf(key))
-		const outKeys = Buffer.concat(keys)
-		const [ status, count ] = native.mapUpdateElem(this.ref.fd,
-			outKeys, keys.length)
-		checkStatus('bpf_map_delete_batch', status)
-		if (count > keys.length)
-			throw Error('Invalid count received')
-		return sliceBuffer(outKeys, count, this.ref.keySize)
+		const keysBuf = Buffer.concat(keys)
+		let [ status, count ] = native.mapDeleteBatch(this.ref.fd,
+			keysBuf, keys.length, {})
+		count = fixCount(count, keys.length, status)
+		checkStatus('bpf_map_delete_batch', status, count)
+		checkAllProcessed(count, keys.length)
 	}
 
 
@@ -398,9 +479,10 @@ export class ConvMap<K, V> implements IMap<K, V> {
 		return this.map.delete(this.keyConv.format(key))
 	}
 
-	getBatch(keys: K[]): (V | undefined)[] {
-		return this.map.getBatch(keys.map(k => this.keyConv.format(k)))
-			.map(v => this.valueConv.parseMaybe( v))
+	*getBatch(batchSize: number, flags?: number): IterableIterator<[K, V][]> {
+		for (const entries of this.map.getBatch(batchSize, flags))
+			yield entries.map(
+				([k, v]) => [this.keyConv.parse(k), this.valueConv.parse(v)])
 	}
 
 	/* getDeleteBatch(keys: K[]): (V | undefined)[] {
@@ -408,15 +490,14 @@ export class ConvMap<K, V> implements IMap<K, V> {
 			.map(v => this.valueConv.parseMaybe(v))
 	} */
 
-	setBatch(entries: [K, V][]): this {
+	setBatch(entries: [K, V][], flags?: number): this {
 		this.map.setBatch(entries.map(
-			([k, v]) => [this.keyConv.format(k), this.valueConv.format(v)]))
+			([k, v]) => [this.keyConv.format(k), this.valueConv.format(v)]), flags)
 		return this
 	}
 
-	deleteBatch(keys: K[]): K[] {
+	deleteBatch(keys: K[]): void {
 		return this.map.deleteBatch(keys.map(k => this.keyConv.format(k)))
-			.map(k => this.keyConv.parse(k))
 	}
 
 	getNextKey(key?: K): K | undefined {
