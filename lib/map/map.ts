@@ -29,8 +29,8 @@ export interface IMap<K, V> {
 	 * Fetch the value for a single key.
 	 * 
 	 * @param key Entry key
-	 * @param flags Operation flags
 	 * @returns Entry value, or undefined if no such entry exists
+	 * @param flags Operation flags (since Linux 5.1), see [[MapLookupFlags]]
 	 */
 	get(key: K, flags?: number): V | undefined
 
@@ -47,7 +47,7 @@ export interface IMap<K, V> {
 	 * 
 	 * @param key Entry key
 	 * @param value Entry value
-	 * @param flags Operation flags
+	 * @param flags Operation flags (since Linux 3.19), see [[MapUpdateFlags]]
 	 */
 	set(key: K, value: V, flags?: number): this
 

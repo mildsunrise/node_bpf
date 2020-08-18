@@ -139,3 +139,21 @@ export enum MapFlags {
 	/** Enable memory-mapping BPF map */
 	MMAPABLE = (1 << 10),
 }
+
+/** Flags for `set` operation on a map */
+export enum MapUpdateFlags {
+	/** create new element or update existing */
+	ANY = 0,
+	/** create new element if it didn't exist */
+	NOEXIST = 1,
+	/** update existing element */
+	EXIST = 2,
+	/** spin_lock-ed operation (since Linux 5.1) */
+	F_LOCK = 4,
+}
+
+/** Flags for `get` operation on a map */
+export enum MapLookupFlags {
+	/** spin_lock-ed operation (since Linux 5.1) */
+	F_LOCK = 4,
+}

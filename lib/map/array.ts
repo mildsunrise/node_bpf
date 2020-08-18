@@ -27,7 +27,7 @@ export interface IArrayMap<V> {
 	 * indexes.
 	 * 
 	 * @param key Array index
-	 * @param flags Operation flags
+	 * @param flags Operation flags (since Linux 5.1), see [[MapLookupFlags]]
 	 */
 	get(key: number, flags?: number): V
 
@@ -37,7 +37,7 @@ export interface IArrayMap<V> {
 	 * 
 	 * @param key Array index
 	 * @param value Nwe value
-	 * @param flags Operation flags
+	 * @param flags Operation flags (since Linux 3.19), see [[MapUpdateFlags]]
 	 */
 	set(key: number, value: V, flags?: number): this
 
