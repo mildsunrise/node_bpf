@@ -1,6 +1,6 @@
 import { createMap, ConvArrayMap, createArrayMap, u32type, MapType, RawArrayMap, MapRef } from '../lib'
 import { asUint32Array } from '../lib/util'
-import { concat, conditionalTest } from './util'
+import { concat, conditionalTest, kernelAtLeast, isRoot } from './util'
 
 describe('RawArrayMap tests', () => {
 
@@ -46,7 +46,7 @@ describe('RawArrayMap tests', () => {
         expect(array.get(0, 0, out)).toBe(out)
     })
 
-    conditionalTest(true, 'getBatch should not share buffers', () => {
+    conditionalTest(kernelAtLeast('5.6'), 'getBatch should not share buffers', () => {
         const ref = createMap({
             type: MapType.ARRAY,
             keySize: 4,
@@ -63,9 +63,6 @@ describe('RawArrayMap tests', () => {
 })
 
 describe('ConvArrayMap tests', () => {
-    
-    const conditionalTest = (condition: boolean, ...args: ArgsType<typeof it>) =>
-        condition ? it(...args) : it.skip(...args)
 
     it('basic operations', () => {
         const array = createArrayMap(5, 4, u32type)
@@ -93,7 +90,7 @@ describe('ConvArrayMap tests', () => {
         expect([...array]).toStrictEqual([ 1, 0, 5, 0, 0 ])
     })
 
-    conditionalTest(true, 'batched operations', () => {
+    conditionalTest(kernelAtLeast('5.6'), 'batched operations', () => {
         const array = createArrayMap(5, 4, u32type)
 
         expect(() => [...array.getBatch(0)]).toThrow()
@@ -121,7 +118,7 @@ describe('ConvArrayMap tests', () => {
         expect(() => array.setBatch([ [1, 7], [-1, 5] ])).toThrow()
     })
 
-    conditionalTest(true, 'getAll / setAll', () => {
+    conditionalTest(kernelAtLeast('5.6'), 'getAll / setAll', () => {
         const array = createArrayMap(5, 4, u32type)
 
         expect(array.getAll()).toStrictEqual([0,0,0,0,0])
@@ -138,7 +135,7 @@ describe('ConvArrayMap tests', () => {
         expect(array.getAll()).toStrictEqual([1, 2, 3, 4, 5])
     })
 
-    conditionalTest(false, 'freezing', () => {
+    conditionalTest(kernelAtLeast('5.2') && isRoot, 'freezing', () => {
         const map = createArrayMap(7, 4, u32type)
         map.set(0, 4).set(2, 8).set(3, 7)
         map.freeze()

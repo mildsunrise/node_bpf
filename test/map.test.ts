@@ -1,6 +1,6 @@
 import { createMap, MapType, ConvMap, RawMap, u32type, MapFlags } from '../lib'
 import { asUint32Array } from '../lib/util'
-import { concat, sortKeys, conditionalTest } from './util'
+import { concat, sortKeys, conditionalTest, kernelAtLeast, isRoot } from './util'
 
 describe('RawMap tests', () => {
 
@@ -80,7 +80,7 @@ describe('RawMap tests', () => {
         expect(map.get(Buffer.alloc(4), 0, out)).toBe(out)
     })
 
-    conditionalTest(true, 'getBatch should not share buffers', () => {
+    conditionalTest(kernelAtLeast('5.6'), 'getBatch should not share buffers', () => {
         const ref = createMap({
             type: MapType.HASH,
             keySize: 4,
@@ -181,7 +181,7 @@ describe('ConvMap tests', () => {
         map.ref.close()
     })
 
-    conditionalTest(false, 'freezing', () => {
+    conditionalTest(kernelAtLeast('5.2') && isRoot, 'freezing', () => {
         const ref = createMap({
             type: MapType.HASH,
             keySize: 4,
@@ -201,7 +201,7 @@ describe('ConvMap tests', () => {
         expect(map.get(0)).toBe(4)
     })
 
-    conditionalTest(true, 'batched operations', () => {
+    conditionalTest(kernelAtLeast('5.6'), 'batched operations', () => {
         const ref = createMap({
             type: MapType.HASH,
             keySize: 4,
@@ -258,7 +258,7 @@ describe('ConvMap tests', () => {
         expect(() => map.deleteBatch([])).toThrow()
     })
 
-    conditionalTest(false, 'QUEUE / STACK operations', () => {
+    conditionalTest(kernelAtLeast('4.20') && isRoot, 'QUEUE / STACK operations', () => {
         const ref = createMap({
             type: MapType.QUEUE,
             keySize: 4,
