@@ -11,7 +11,7 @@
             "elfutils",
             "elfutils_config",
         ],
-        "cflags": [ "-std=gnu99" ],
+        "cflags": [ "-std=gnu99", "-Wno-implicit-fallthrough" ],
         "defines": [
             "HAVE_CONFIG_H",
             "_GNU_SOURCE",
