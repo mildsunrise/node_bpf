@@ -21,8 +21,8 @@ export interface MapDesc {
     /** Size of every value, in bytes */
     valueSize: number
     /** Maximum amount of entries: the meaning of this is type-dependent */
-	maxEntries: number
-	/** Flags specified on map creation, see [[MapFlags]] */
+    maxEntries: number
+    /** Flags specified on map creation, see [[MapFlags]] */
     flags?: number
     
     // Optional
@@ -72,7 +72,7 @@ export interface TypeConversion<X> {
     /** Parse a `Buffer` into user data */
     parse(buf: Buffer): X
     /** Write the user data into the passed `Buffer` */
-	format(buf: Buffer, x: X): void
+    format(buf: Buffer, x: X): void
 }
 
 export class TypeConversionWrap<X> {
@@ -135,17 +135,17 @@ export function createMap(desc: MapDesc): MapRef {
 // Utils for map interfaces
 
 export function fixCount(count: number | undefined, batchSize: number, status: number) {
-	if (status < 0 && count === batchSize) {
-		// it's impossible to have an error if all entries were processed,
-		// that must mean count wasn't updated
-		count = (status === -EFAULT) ? undefined : 0
-	}
-	return count
+    if (status < 0 && count === batchSize) {
+        // it's impossible to have an error if all entries were processed,
+        // that must mean count wasn't updated
+        count = (status === -EFAULT) ? undefined : 0
+    }
+    return count
 }
 
 export function checkAllProcessed(count: number | undefined, batchSize: number) {
-	if (count !== batchSize) {
-		// it's impossible to have no error if some entries weren't processed
-		throw Error(`Assertion failed: ${count} of ${batchSize} entries processed`)
-	}
+    if (count !== batchSize) {
+        // it's impossible to have no error if some entries weren't processed
+        throw Error(`Assertion failed: ${count} of ${batchSize} entries processed`)
+    }
 }
