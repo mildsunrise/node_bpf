@@ -1,6 +1,6 @@
 export type FD = number
 
-export const native = require('../build/Release/bpf_binding.node')
+export const native = require('node-gyp-build')(__dirname + '/..')
 
 export const versions: {
     /** libelf version used */

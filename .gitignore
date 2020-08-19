@@ -1,4 +1,5 @@
 /build/
+/prebuilds/
 /dist/
 /docs/
 /coverage/
