@@ -1,6 +1,6 @@
 {
     "name": "bpf",
-    "version": "0.0.0-pre",
+    "version": "1.0.0-rc2",
     "description": "Bindings for eBPF (libbpf)",
     "author": "Alba Mendez <me@alba.sh>",
     "keywords": [
