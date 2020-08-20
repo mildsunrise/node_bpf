@@ -6,6 +6,12 @@
  */
 /** */
 
+/**
+ * Maximum length of object names, in bytes, including NUL terminator.
+ * Longer names will be truncated.
+ */
+export const OBJ_NAME_LEN = 16
+
 export enum ProgramType {
     SOCKET_FILTER = 1,
     KPROBE,

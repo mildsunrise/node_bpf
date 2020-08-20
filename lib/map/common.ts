@@ -27,7 +27,7 @@ export interface MapDesc {
     
     // Optional
 
-    /** Map name (might get truncated if longer than allowed) (since Linux 4.15) */
+    /** Map name (might get truncated if longer than [[OBJ_NAME_LEN]]) (since Linux 4.15) */
     name?: string
     /** NUMA node on which to store the map (since Linux 4.15) */
     numaNode?: number

@@ -1,5 +1,5 @@
 export { version, versions } from './util'
-export { ProgramType, MapType, AttachType, MapFlags, MapUpdateFlags, MapLookupFlags} from './enums'
+export { ProgramType, MapType, AttachType, MapFlags, MapUpdateFlags, MapLookupFlags, OBJ_NAME_LEN } from './enums'
 export { LibbpfErrno, BPFError, libbpfErrnoMessages } from './exception'
 export { MapDesc, MapRef, createMap, TypeConversion, u32type } from './map/common'
 export { IMap, RawMap, ConvMap } from './map/map'
