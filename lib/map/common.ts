@@ -3,6 +3,8 @@ import { checkStatus } from '../exception'
 import { MapType, MapFlags } from '../enums'
 const { EFAULT } = native
 
+// FIXME: we are excluding BTF related parameters for now
+
 /**
  * Parameters to create an eBPF map.
  * 
@@ -31,6 +33,14 @@ export interface MapDesc {
     name?: string
     /** NUMA node on which to store the map (since Linux 4.15) */
     numaNode?: number
+    /**
+     * For map-in-map types: parameters for the inner map,
+     * or FD of an existing map to clone parameters from.
+     * The existing map's lifetime isn't affected in any way.
+     */
+    innerMap?: MapDesc | number
+    /** For offloading, ifindex of network device to create the map on (since Linux 4.16) */
+    ifindex?: number
 }
 
 /**
@@ -117,19 +127,29 @@ export const u32type: TypeConversion<number> = {
  * to the newly created map, and its actual parameters
  */
 export function createMap(desc: MapDesc): MapRef {
-    // prevent people from 
-    checkU32(desc.keySize)
-    checkU32(desc.valueSize)
-    checkU32(desc.maxEntries)
+    let innerRef: MapRef | undefined
+    try {
+        // prevent people from accidentally passing -1 or similar
+        checkU32(desc.keySize)
+        checkU32(desc.valueSize)
+        checkU32(desc.maxEntries)
 
-    desc = { flags: 0, ...desc }
-    if (desc.numaNode !== undefined)
-        desc.flags! |= MapFlags.NUMA_NODE
+        desc = { flags: 0, ...desc }
+        if (desc.numaNode !== undefined)
+            desc.flags! |= MapFlags.NUMA_NODE
 
-    const status: number = native.createMap(desc)
-    checkStatus('bpf_create_map_xattr', status)
-    const ref = new native.FDRef(status)
-    return Object.freeze(Object.assign(ref, desc))
+        if (desc.innerMap !== undefined && typeof desc.innerMap !== 'number') {
+            innerRef = createMap(desc.innerMap)
+            desc.innerMap = innerRef.fd
+        }
+
+        const status: number = native.createMap(desc)
+        checkStatus('bpf_create_map_xattr', status)
+        const ref = new native.FDRef(status)
+        return Object.freeze(Object.assign(ref, desc))
+    } finally {
+        innerRef && innerRef.close!()
+    }
 }
 
 // Utils for map interfaces

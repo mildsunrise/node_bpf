@@ -256,6 +256,8 @@ Napi::Value CreateMap(const CallbackInfo& info) {
     attr.value_size = GetNumber<uint32_t>(env, desc["valueSize"]);
     attr.max_entries = GetNumber<uint32_t>(env, desc["maxEntries"]);
     attr.numa_node = GetNumber<uint32_t>(env, desc["numaNode"], 0);
+    attr.inner_map_fd = GetNumber<uint32_t>(env, desc["innerMap"], 0);
+    attr.map_ifindex = GetNumber<uint32_t>(env, desc["ifindex"], 0);
     std::string name;
     if (desc.Has("name")) {
         name = GetString(env, desc["name"]);
