@@ -2,6 +2,7 @@
 #include <string>
 #include <sstream>
 #include <cassert>
+#include <stdio.h>
 #include <fcntl.h>
 
 #include <unistd.h>
@@ -82,11 +83,17 @@ class FDRef : public Napi::ObjectWrap<FDRef> {
         fd(Napi::Number(info.Env(), info[0])) {}
     
     ~FDRef() {
-        // Not sure if we should print a warning... FileHandle does, but
-        // file FDs are of different nature than kernel object references IMHO.
+        // Not sure if we should print a warning when closing via GC...
+        // FileHandle does, but file FDs are of different nature than
+        // kernel object references IMHO.
+        doClose();
+    }
+
+    void doClose() {
         if (fd != -1) {
             int status = close(fd);
-            assert(status == 0);
+            if (status != 0)
+                fprintf(stderr, "node_bpf: warning: descriptor %d failed to close, possible ownership issues\n", fd);
             fd = -1;
         }
     }
@@ -102,11 +109,7 @@ class FDRef : public Napi::ObjectWrap<FDRef> {
     }
 
     void Close(const CallbackInfo& info) {
-        if (fd == -1)
-            return;
-        int status = close(fd);
-        assert(status == 0);
-        fd = -1;
+        doClose();
     }
 
     Napi::Value ToString(const CallbackInfo& info) {
