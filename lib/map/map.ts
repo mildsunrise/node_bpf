@@ -27,9 +27,9 @@ const { ENOENT } = native
  * map operations. These are marked as convenience methods in their
  * documentation.
  * 
- * Notably, **iterating methods** such as [[entries]], [[keys]],
+ * Notably, **iterating methods** such as [[entries]], [[consumeEntries]],
  * [[values]] and also [[clear]] are all convenience methods, implemented
- * using a combination of [[getNextKey]] and another operation.
+ * using a combination of [[keys]] and another operation.
  * 
  * ### Batched operations
  * 
@@ -169,22 +169,33 @@ export interface IMap<K, V> {
     // Other operations
 
     /**
-     * Returns key immediately following the passed one,
-     * or (if the key doesn't exist or isn't passed) the
-     * first key.
+     * Non-atomically iterates through the map's keys, starting
+     * by the key immediately following the passed one. If no
+     * key isn't passed or it doesn't exist, iteration starts by
+     * the first key in the map.
+     * 
+     * **Note:** Not passing a key is only supported
+     * on kernels 4.12 and above.
+     * 
+     * Because this calls `BPF_MAP_GET_NEXT_KEY` repeatedly,
+     * if the map's keys are deleted while it's being iterated
+     * (by this or another program), iteration could restart to
+     * the beginning. However, this method fetches the next key
+     * *before* yielding the current one, making it safe to delete
+     * the current key (and any past ones).
      * 
      * Keep in mind that the order of keys depends on the
      * type of map, and isn't necessarily guaranteed to be
      * consistent.
      * 
-     * **Note:** Not passing a key is only supported
-     * on kernels 4.12 and above.
-     * 
-     * @param key Current key
-     * @returns Next key, or `undefined` if no such key exists.
+     * @param start Start key (if passed and found, iteration
+     * will yield keys *after* this one, i.e. it's not included
+     * in the result)
      * @category Operations
      */
-    getNextKey(key?: K): K | undefined
+    keys(start?: K): Generator<K, undefined>
+    // (we use Generator because IterableIterator doesn't let us
+    // specify return type, and it's useful to have it)
 
     /**
      * Freezes the map, making it non-modifiable from userspace.
@@ -208,28 +219,14 @@ export interface IMap<K, V> {
     has(key: K): boolean
 
     /**
-     * Convenience function. Non-atomically iterates through the map's keys.
-     * Gets the next key *before* yielding the current one, making it
-     * suitable for deleting entries while iterating.
-     * 
-     * **Note:** For kernels older than 4.12, a start key must be passed.
-     * See [[getNextKey]].
-     * 
-     * This is a wrapper around [[getNextKey]].
-     * 
-     * @category Convenience
-     */
-    keys(start?: K): IterableIterator<K>
-
-    /**
      * Convenience function. Non-atomically iterates through the map's entries.
      * Gets the next key *before* yielding the current one, making it
      * suitable for deleting entries while iterating.
      * 
      * **Note:** For kernels older than 4.12, a start key must be passed.
-     * See [[getNextKey]].
+     * See [[keys]].
      * 
-     * This is a wrapper around [[getNextKey]] and [[get]].
+     * This is a wrapper around [[keys]] and [[get]].
      * 
      * @category Convenience
      */
@@ -239,9 +236,9 @@ export interface IMap<K, V> {
      * Convenience function. Non-atomically iterates through the map's values.
      * 
      * **Note:** For kernels older than 4.12, a start key must be passed.
-     * See [[getNextKey]].
+     * See [[keys]].
      * 
-     * This is a wrapper around [[getNextKey]] and [[get]].
+     * This is a wrapper around [[keys]] and [[get]].
      * 
      * @category Convenience
      */
@@ -251,7 +248,7 @@ export interface IMap<K, V> {
      * Convenience function. Non-atomically iterates through the map's entries,
      * deleting them while iterating.
      * 
-     * This is a wrapper around [[getNextKey]] and [[getDelete]].
+     * This is a wrapper around [[keys]] and [[getDelete]].
      * 
      * @category Convenience
      */
@@ -262,9 +259,9 @@ export interface IMap<K, V> {
      * deleting them.
      * 
      * **Note:** For kernels older than 4.12, a start key must be passed.
-     * See [[getNextKey]].
+     * See [[keys]].
      * 
-     * This is a wrapper around [[getNextKey]] and [[delete]].
+     * This is a wrapper around [[keys]] and [[delete]].
      * 
      * @category Convenience
      */
@@ -429,6 +426,16 @@ export class RawMap implements IMap<Buffer, Buffer> {
 
     // Other operations
 
+    *keys(start?: Buffer): Generator<Buffer, undefined> {
+        let key = this.getNextKey(start)
+        while (key !== undefined) {
+            const next = this.getNextKey(key)
+            yield key
+            key = next
+        }
+        return undefined
+    }
+
     getNextKey(key?: Buffer, out?: Buffer): Buffer | undefined {
         // FIXME: if no key passed, implement fallback like BCC does
         key !== undefined && this._kBuf(key)
@@ -450,15 +457,6 @@ export class RawMap implements IMap<Buffer, Buffer> {
 
     has(key: Buffer): boolean {
         return this.get(key) !== undefined
-    }
-
-    *keys(start?: Buffer): IterableIterator<Buffer> {
-        let key = this.getNextKey(start)
-        while (key !== undefined) {
-            const next = this.getNextKey(key)
-            yield key
-            key = next
-        }
     }
 
     *entries(start?: Buffer): IterableIterator<[Buffer, Buffer]> {
@@ -561,9 +559,10 @@ export class ConvMap<K, V> implements IMap<K, V> {
         return this.map.deleteBatch(keys.map(k => this.keyConv.format(k)))
     }
 
-    getNextKey(key?: K): K | undefined {
-        return this.keyConv.parseMaybe(
-            this.map.getNextKey(this.keyConv.formatMaybe(key)) )
+    *keys(start?: K): Generator<K, undefined> {
+        for (const k of this.map.keys(this.keyConv.formatMaybe(start)))
+            yield this.keyConv.parse(k)
+        return undefined
     }
 
     freeze(): void {
@@ -572,11 +571,6 @@ export class ConvMap<K, V> implements IMap<K, V> {
 
     has(key: K): boolean {
         return this.map.has(this.keyConv.format(key))
-    }
-
-    *keys(start?: K): IterableIterator<K> {
-        for (const k of this.map.keys(this.keyConv.formatMaybe(start)))
-            yield this.keyConv.parse(k)
     }
 
     *entries(start?: K): IterableIterator<[K, V]> {

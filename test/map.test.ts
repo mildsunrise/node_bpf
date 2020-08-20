@@ -124,7 +124,7 @@ describe('ConvMap tests', () => {
         expect(map.get(2)).toStrictEqual(5)
         expect(map.get(0)).toStrictEqual(4)
 
-        expect([0, 2].includes(map.getNextKey(7) as any)).toBeTruthy()
+        expect([0, 2].includes(map.keys(7).next().value!)).toBeTruthy()
         expect(map.has(0)).toBe(true)
         expect(map.has(7)).toBe(false)
         
