@@ -1,4 +1,4 @@
-import { createMap, MapType, ConvMap, RawMap, u32type, MapFlags } from '../lib'
+import { createMap, MapType, ConvMap, RawMap, u32type, MapFlags, MapDef, createMapRef, openMap } from '../lib'
 import { asUint32Array } from '../lib/util'
 import { concat, sortKeys, conditionalTest, kernelAtLeast, isRoot } from './util'
 
@@ -80,6 +80,63 @@ describe('RawMap tests', () => {
         expect(map.get(Buffer.alloc(4), 0, out)).toBe(out)
     })
 
+    conditionalTest(kernelAtLeast('4.13'), 'createMapRef', () => {
+        const ref = createMap({
+            type: MapType.ARRAY,
+            keySize: 4,
+            valueSize: 4,
+            maxEntries: 5,
+        })
+        expect(ref.id).not.toBeUndefined()
+
+        const ref2 = createMapRef(ref.fd)
+        expect(ref2.fd).not.toBe(ref.fd)
+        expect(ref2.id).toBe(ref.id!)
+
+        ref.close()
+        ref2.close()
+    })
+
+    conditionalTest(kernelAtLeast('4.13') && isRoot, 'openMap', () => {
+        const ref = createMap({
+            type: MapType.ARRAY,
+            keySize: 4,
+            valueSize: 4,
+            maxEntries: 5,
+        })
+        expect(ref.id).not.toBeUndefined()
+        
+        const ref2 = openMap(ref.id!)
+        expect(ref2.id).toBe(ref.id!)
+
+        ref.close()
+        ref2.close()
+    })
+
+    conditionalTest(kernelAtLeast('4.12'), 'map-in-map support', () => {
+        const innerMap: MapDef = {
+            type: MapType.HASH,
+            keySize: 4,
+            valueSize: 4,
+            maxEntries: 7,
+        }
+        const ref = createMap({
+            type: MapType.ARRAY_OF_MAPS,
+            keySize: 4,
+            valueSize: 4,
+            maxEntries: 5,
+            innerMap,
+        })
+        const map = new ConvMap(ref, u32type, u32type)
+
+        expect(map.get(3)).toBeUndefined()
+        expect([...map]).toStrictEqual([])
+
+        const map3 = new ConvMap(createMap(innerMap), u32type, u32type)
+        map.set(3, map3.ref.fd)
+        expect([...map]).toStrictEqual([ [3, map3.ref.id!] ])
+    })
+
     conditionalTest(kernelAtLeast('5.6'), 'getBatch should not share buffers', () => {
         const ref = createMap({
             type: MapType.HASH,
@@ -90,7 +147,7 @@ describe('RawMap tests', () => {
         const rawMap = new RawMap(ref)
         const map = new ConvMap(ref, u32type, u32type)
         map.set(0, 4).set(2, 8).set(3, 7).set(1, 10)
-        const entries = concat(...rawMap.getBatch(2)).map(e => e.map(x => asUint32Array(x)[0])) as [number, number][]
+        const entries = concat(...rawMap.getBatch(3)).map(e => e.map(x => asUint32Array(x)[0])) as [number, number][]
         expect(sortKeys(entries)).toStrictEqual([ [0, 4], [1, 10], [2, 8], [3, 7] ])
     })
 
