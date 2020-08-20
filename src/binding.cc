@@ -2,6 +2,7 @@
 #include <string>
 #include <sstream>
 #include <cassert>
+#include <fcntl.h>
 
 #include <unistd.h>
 #include <linux/btf.h>
@@ -118,6 +119,12 @@ class FDRef : public Napi::ObjectWrap<FDRef> {
         return Napi::String::New(env, str.str());
     }
 };
+
+Napi::Value Dup(const CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    auto fd = GetNumber<int>(env, info[0]);
+    return ToStatus(env, fcntl(fd, F_DUPFD, 0));
+}
 
 Napi::Value MapUpdateElem(const CallbackInfo& info) {
     Napi::Env env = info.Env();
@@ -266,6 +273,33 @@ Napi::Value CreateMap(const CallbackInfo& info) {
     return ToStatus(env, bpf_create_map_xattr(&attr));
 }
 
+Napi::Value GetMapInfo(const CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    auto fd = GetNumber<int>(env, info[0]);
+    bpf_map_info map_info {};
+    uint32_t info_size = sizeof(map_info);
+    auto ret = Napi::Array::New(env);
+    ret[0U] = ToStatus(env, bpf_obj_get_info_by_fd(fd, &map_info, &info_size));
+    // FIXME: verify fd is a map, or remove claim from docs
+    auto obj = Napi::Object::New(env);
+    obj["type"] = Napi::Number::New(env, (uint32_t) map_info.type);
+    obj["id"] = Napi::Number::New(env, map_info.id);
+    obj["keySize"] = Napi::Number::New(env, map_info.key_size);
+    obj["valueSize"] = Napi::Number::New(env, map_info.value_size);
+    obj["maxEntries"] = Napi::Number::New(env, map_info.max_entries);
+    obj["flags"] = Napi::Number::New(env, map_info.map_flags);
+    if (info_size >= offsetof(bpf_map_info, name) + sizeof(map_info.name))
+        obj["name"] = Napi::String::New(env, map_info.name);
+    if (info_size >= offsetof(bpf_map_info, ifindex) + sizeof(map_info.ifindex))
+        obj["ifindex"] = Napi::Number::New(env, map_info.ifindex);
+    if (info_size >= offsetof(bpf_map_info, netns_dev) + sizeof(map_info.netns_dev))
+        obj["netnsDev"] = Napi::BigInt::New(env, (uint64_t) map_info.netns_dev);
+    if (info_size >= offsetof(bpf_map_info, netns_ino) + sizeof(map_info.netns_ino))
+        obj["netnsIno"] = Napi::BigInt::New(env, (uint64_t) map_info.netns_ino);
+    ret[1U] = obj;
+    return ret;
+}
+
 #define EXPOSE_FUNCTION(NAME, METHOD) exports.Set(NAME, Napi::Function::New(env, METHOD, NAME))
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
@@ -280,9 +314,11 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     exports["versions"] = versions;
 
     FDRef::Init(env, exports);
+    EXPOSE_FUNCTION("dup", Dup);
 
     exports["ENOENT"] = Napi::Number::New(env, ENOENT);
     exports["EFAULT"] = Napi::Number::New(env, EFAULT);
+    exports["EINVAL"] = Napi::Number::New(env, EINVAL);
 
     EXPOSE_FUNCTION("mapUpdateElem", MapUpdateElem);
     EXPOSE_FUNCTION("mapLookupElem", MapLookupElem);
@@ -295,6 +331,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     EXPOSE_FUNCTION("mapLookupAndDeleteBatch", MapLookupAndDeleteBatch);
     EXPOSE_FUNCTION("mapUpdateBatch", MapUpdateBatch);
     EXPOSE_FUNCTION("createMap", CreateMap);
+    EXPOSE_FUNCTION("getMapInfo", GetMapInfo);
 
     return exports;
 }
