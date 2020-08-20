@@ -14,10 +14,11 @@ Node.js bindings to libbpf. BPF is a Virtual Machine (and associated bytecode de
 
 Not enough functionality for standalone use yet.
 
-There's an API to create ([`createMap`][]) and manipulate ([`IMap`][]) eBPF maps.  
-Apart from the generic `IMap`, there's a few other interfaces for specific semantics, such as [`IArrayMap`][] for `ARRAY` maps.
+There's a generic API to create ([`createMap`][]) and manipulate ([`IMap`][]) eBPF maps of any type, including map-in-map support, but only some map types are currently tested. There's no BTF support for now.
 
-The interfaces have raw versions (which operate with binary `Buffer`s directly), or high-level versions which use a [conversion][`TypeConversion`] supplied by the user.
+It has a [raw version][`RawMap`] (which operates with binary `Buffer`s directly), and a [high-level version][`ConvMap`] which uses a conversion supplied by the user.
+
+Apart from the generic API, there's a few other sub-APIs for specific map types, such as [`IArrayMap`][] for `ARRAY` maps. These also have raw and high-level versions.
 
 ## Usage
 
@@ -41,5 +42,7 @@ libbpf is kernel agnostic, but not all of the exposed features may be supported 
 
 [`createMap`]: https://bpf.alba.sh/docs/globals.html#createmap
 [`IMap`]: https://bpf.alba.sh/docs/interfaces/imap.html
-[`IArrayMap`]: https://bpf.alba.sh/docs/interfaces/iarraymap.html
+[`RawMap`]: https://bpf.alba.sh/docs/classes/rawmap.html
+[`ConvMap`]: https://bpf.alba.sh/docs/classes/convmap.html
 [`TypeConversion`]: https://bpf.alba.sh/docs/interfaces/typeconversion.html
+[`IArrayMap`]: https://bpf.alba.sh/docs/interfaces/iarraymap.html

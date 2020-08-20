@@ -85,10 +85,18 @@ export interface MapInfo {
  * eBPF map. The object must own the file descriptor, meaning
  * that it won't get closed while this object is alive.
  * 
- * If you got a file descriptor from someplace else, make sure
- * to set the parameters correctly (otherwise, it can lead to
- * **buffer overflow**) and make sure this object holds a
- * reference to whatever is keeping the file descriptor alive.
+ * If you got a file descriptor from someplace else, you can
+ * use [[createMapRef]] to obtain a [[MapRef]] pointing to the
+ * same map.
+ * 
+ * ### Implementing a custom `MapRef`
+ * 
+ * You can also choose to implement your own `MapRef`s,
+ * but you must make sure to report the parameters correctly
+ * (otherwise, it can lead to **buffer overflow**) and make
+ * sure the object holds a reference to whatever is keeping
+ * the file descriptor from being closed. You may optionally
+ * implement [[close]] if you completely own the FD.
  */
 export interface MapRef extends MapInfo {
     /**

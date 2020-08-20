@@ -36,7 +36,7 @@ const { ENOENT } = native
  * These are special map operations that process many entries.
  * [[setBatch]] and [[deleteBatch]] are mostly equivalent to a
  * repeated [[set]] or [[delete]] on each of the entries.
- * [[getBatched]] iterates through the entries of the map
+ * [[getBatch]] iterates through the entries of the map
  * and is mostly equivalent to [[entries]].
  * 
  * The difference is that all this is performed in the kernel
@@ -285,10 +285,8 @@ export class RawMap implements IMap<Buffer, Buffer> {
     /**
      * Construct a new instance operating on the given map.
      * 
-     * @param ref Reference to the map. If you pass a
-     * custom [[MapRef]], make sure the information is
-     * correct. Failure to do so can result in **buffer
-     * overflows**.
+     * @param ref Reference to the map. See [[MapRef]] if
+     * you want to implement your own instances.
      */
     constructor(ref: MapRef) {
         this.ref = ref
@@ -506,10 +504,8 @@ export class ConvMap<K, V> implements IMap<K, V> {
     /**
      * Construct a new instance operating on the given map.
      * 
-     * @param ref Reference to the map. If you pass a
-     * custom [[MapRef]], make sure the information is
-     * correct. Failure to do so can result in **buffer
-     * overflows**.
+     * @param ref Reference to the map. See [[MapRef]] if
+     * you want to implement your own instances.
      * @param keyConv Type conversion for keys
      * @param valueConv Type conversion for values
      */

@@ -151,10 +151,8 @@ export class RawArrayMap implements IArrayMap<Buffer> {
      * 
      * The map must be of `ARRAY` type.
      * 
-     * @param ref Reference to the map. If you pass a
-     * custom [[MapRef]], make sure the information is
-     * correct. Failure to do so can result in **buffer
-     * overflows**.
+     * @param ref Reference to the map. See [[MapRef]] if
+     * you want to implement your own instances.
      */
     constructor(ref: MapRef) {
         if (ref.type !== MapType.ARRAY)
@@ -333,10 +331,8 @@ export class ConvArrayMap<V> implements IArrayMap<V> {
      * 
      * The map must be of `ARRAY` type.
      * 
-     * @param ref Reference to the map. If you pass a
-     * custom [[MapRef]], make sure the information is
-     * correct. Failure to do so can result in **buffer
-     * overflows**.
+     * @param ref Reference to the map. See [[MapRef]] if
+     * you want to implement your own instances.
      * @param valueConv Type conversion for array values
      */
     constructor(ref: MapRef, valueConv: TypeConversion<V>) {
@@ -398,6 +394,8 @@ export class ConvArrayMap<V> implements IArrayMap<V> {
  * @param valueSize Size of each value, in bytes (will be
  * rounded up to a multiple of 8)
  * @param valueConv Type conversion for values
+ * @returns [[MapRef]] instance, holding a reference
+ * to the newly created map, and its actual parameters
  */
 export function createArrayMap<V>(
     length: number,
