@@ -252,6 +252,20 @@ export function createMapRef(fd: number, options?: {
     return ref
 }
 
+/**
+ * Get a [[MapRef]] to the eBPF map with specified ID.
+ * 
+ * Since Linux 4.13.
+ * 
+ * @param id Map ID
+ * @returns [[MapRef]] instance
+ */
+export function openMap(id: number): MapRef {
+    const status = native.mapGetFdById(id)
+    checkStatus('bpf_map_get_fd_by_id', status)
+    return createMapRef(status, { transfer: true })
+}
+
 // Utils for map interfaces
 
 export function fixCount(count: number | undefined, batchSize: number, status: number) {

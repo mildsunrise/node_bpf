@@ -191,8 +191,6 @@ bpf_map_batch_opts GetBatchOpts(Napi::Env env, Napi::Value x) {
     return ret;
 }
 
-// FIXME: what does in_batch / out_batch do?
-
 Napi::Value MapDeleteBatch(const CallbackInfo& info) {
     Napi::Env env = info.Env();
     size_t a = 0;
@@ -303,6 +301,13 @@ Napi::Value GetMapInfo(const CallbackInfo& info) {
     return ret;
 }
 
+Napi::Value MapGetFdById(const CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    size_t a = 0;
+    auto id = GetNumber<uint32_t>(env, info[a++]);
+    return ToStatus(env, bpf_map_get_fd_by_id(id));
+}
+
 #define EXPOSE_FUNCTION(NAME, METHOD) exports.Set(NAME, Napi::Function::New(env, METHOD, NAME))
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
@@ -335,6 +340,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     EXPOSE_FUNCTION("mapUpdateBatch", MapUpdateBatch);
     EXPOSE_FUNCTION("createMap", CreateMap);
     EXPOSE_FUNCTION("getMapInfo", GetMapInfo);
+    EXPOSE_FUNCTION("mapGetFdById", MapGetFdById);
 
     return exports;
 }
