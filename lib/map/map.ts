@@ -8,7 +8,7 @@ const { ENOENT } = native
  * with JavaScript `Map`.
  * 
  * In an eBPF map, keys and values are binary strings of a fixed length,
- * defined at map creation (see [[MapDesc]]). [[RawMap]] returns these
+ * defined at map creation (see [[MapDef]]). [[RawMap]] returns these
  * directly as `Buffer` with no conversion, and [[ConvMap]] performs
  * the conversion specified at construction time.
  * 

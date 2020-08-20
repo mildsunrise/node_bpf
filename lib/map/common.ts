@@ -11,7 +11,7 @@ const { EFAULT, EINVAL } = native
  * After the map is created, the parameters may be different
  * because of rounding, truncating or type-dependent behaviour.
  */
-export interface MapDesc {
+export interface MapDef {
     /**
      * Map type. This decides the available operations and
      * their semantics. Keep in mind that not all of the types
@@ -38,7 +38,7 @@ export interface MapDesc {
      * or FD of an existing map to clone parameters from.
      * The existing map's lifetime isn't affected in any way.
      */
-    innerMap?: MapDesc | number
+    innerMap?: MapDef | number
     /** For offloading, ifindex of network device to create the map on (since Linux 4.16) */
     ifindex?: number
 }
@@ -171,7 +171,7 @@ export const u32type: TypeConversion<number> = {
  * @returns [[MapRef]] instance, holding a reference
  * to the newly created map, and its actual parameters
  */
-export function createMap(desc: MapDesc): MapRef {
+export function createMap(desc: MapDef): MapRef {
     let innerRef: MapRef | undefined
     try {
         // prevent people from accidentally passing -1 or similar
@@ -196,7 +196,7 @@ export function createMap(desc: MapDesc): MapRef {
     }
 }
 
-function wrapFDWithFallback(fd: number, desc: MapDesc): MapRef {
+function wrapFDWithFallback(fd: number, desc: MapDef): MapRef {
     try {
         // Attempt to use createMapRef to get info if available
         return createMapRef(fd, { transfer: true })
@@ -205,7 +205,7 @@ function wrapFDWithFallback(fd: number, desc: MapDesc): MapRef {
             throw e;
     }
 
-    // Fall back to building MapRef manually using MapDesc as info
+    // Fall back to building MapRef manually using MapDef as info
     const ref: MapRef = new native.FDRef(fd)
     ref.type = desc.type
     ref.keySize = desc.keySize
