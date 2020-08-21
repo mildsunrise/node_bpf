@@ -135,6 +135,24 @@ describe('RawMap tests', () => {
         const map3 = new ConvMap(createMap(innerMap), u32type, u32type)
         map.set(3, map3.ref.fd)
         expect([...map]).toStrictEqual([ [3, map3.ref.id!] ])
+
+        // Test that we fall back to MapDesc if we can't get FD
+        const ref2 = createMap(innerMap)
+        createMap({
+            type: MapType.ARRAY_OF_MAPS,
+            keySize: 4,
+            valueSize: 4,
+            maxEntries: 5,
+            innerMap: ref2,
+        }) // should not throw
+        ref2.close()
+        createMap({
+            type: MapType.ARRAY_OF_MAPS,
+            keySize: 4,
+            valueSize: 4,
+            maxEntries: 5,
+            innerMap: ref2,
+        }) // should not throw
     })
 
     conditionalTest(kernelAtLeast('5.6'), 'getBatch should not share buffers', () => {

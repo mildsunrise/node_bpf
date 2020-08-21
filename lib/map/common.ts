@@ -39,7 +39,7 @@ export interface MapDef {
      * or FD of an existing map to clone parameters from.
      * The existing map's lifetime isn't affected in any way.
      */
-    innerMap?: MapDef | number
+    innerMap?: MapDef | MapRef | number
     /** For offloading, ifindex of network device to create the map on (since Linux 4.16) */
     ifindex?: number
 }
@@ -188,8 +188,15 @@ export function createMap(desc: MapDef): MapRef {
             desc.flags! |= MapFlags.NUMA_NODE
 
         if (desc.innerMap !== undefined && typeof desc.innerMap !== 'number') {
-            innerRef = createMap(desc.innerMap)
-            desc.innerMap = innerRef.fd
+            let fd: number | undefined
+            try {
+                ; ({ fd } = desc.innerMap as MapRef)
+            } catch (e) {}
+            if (fd === undefined) {
+                innerRef = createMap(desc.innerMap)
+                fd = innerRef.fd
+            }
+            desc.innerMap = fd
         }
 
         const status: number = native.createMap(desc)
@@ -234,9 +241,9 @@ export function createMapRef(fd: number, options?: {
     const ref = new native.FDRef(fd)
 
     const [ status, info ] = native.getMapInfo(fd)
-    if (status === -EINVAL && options && options.parameters) {
+    if (status === -EINVAL && options?.parameters) {
         // Fall back to building MapRef manually using MapDef as info
-        const desc = options && options.parameters
+        const desc = options?.parameters
         ref.type = desc.type
         ref.keySize = desc.keySize
         ref.valueSize = desc.valueSize
