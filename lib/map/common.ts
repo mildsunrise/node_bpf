@@ -126,7 +126,10 @@ export interface MapRef extends MapInfo {
 export interface TypeConversion<X> {
     /** Parse a `Buffer` into user data */
     parse(buf: Buffer): X
-    /** Write the user data into the passed `Buffer` */
+    /**
+     * Write the user data into the passed `Buffer`
+     * (which must *not* be assumed to be initialized)
+     */
     format(buf: Buffer, x: X): void
 }
 
