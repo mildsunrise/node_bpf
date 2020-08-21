@@ -3,5 +3,5 @@ export { ProgramType, MapType, AttachType, MapFlags, MapUpdateFlags, MapLookupFl
 export { LibbpfErrno, BPFError, libbpfErrnoMessages } from './exception'
 export { MapDef, MapInfo, MapRef, createMap, createMapRef, openMap, TypeConversion, u32type } from './map/common'
 export { IMap, RawMap, ConvMap } from './map/map'
-export { IQueueMap, RawQueueMap, ConvQueueMap } from './map/queue'
+export { IQueueMap, RawQueueMap, ConvQueueMap, createQueueMap, createStackMap } from './map/queue'
 export { IArrayMap, RawArrayMap, ConvArrayMap, createArrayMap } from './map/array'

@@ -1,7 +1,7 @@
 import { constants } from 'os'
 import { native } from '../util'
 import { checkStatus } from '../exception'
-import { MapRef, TypeConversion, TypeConversionWrap, fixCount, checkAllProcessed } from './common'
+import { MapRef, TypeConversion, TypeConversionWrap, fixCount, checkAllProcessed, MapDefOptional, createMap } from './common'
 import { MapType } from '../constants'
 const { ENOENT } = constants.errno
 
@@ -244,4 +244,56 @@ export class ConvQueueMap<V> implements IQueueMap<V> {
     [Symbol.iterator](): IterableIterator<V> {
         return this.consumeValues()
     }
+}
+
+/**
+ * Convenience function to create a `QUEUE` map using [[createMap]]
+ * and construct a [[ConvQueueMap]] instance.
+ * 
+ * @param maxEntries Max entries
+ * @param valueSize Size of each value, in bytes
+ * @param valueConv Type conversion for values
+ * @param options Other map options
+ * @returns Map instance
+ */
+export function createQueueMap<V>(
+    maxEntries: number,
+    valueSize: number,
+    valueConv: TypeConversion<V>,
+    options?: MapDefOptional
+): ConvQueueMap<V> {
+    const ref = createMap({
+        ...options,
+        type: MapType.QUEUE,
+        keySize: 0,
+        maxEntries,
+        valueSize,
+    })
+    return new ConvQueueMap(ref, valueConv)
+}
+
+/**
+ * Convenience function to create a `STACK` map using [[createMap]]
+ * and construct a [[ConvQueueMap]] instance.
+ * 
+ * @param maxEntries Max entries
+ * @param valueSize Size of each value, in bytes
+ * @param valueConv Type conversion for values
+ * @param options Other map options
+ * @returns Map instance
+ */
+export function createStackMap<V>(
+    maxEntries: number,
+    valueSize: number,
+    valueConv: TypeConversion<V>,
+    options?: MapDefOptional
+): ConvQueueMap<V> {
+    const ref = createMap({
+        ...options,
+        type: MapType.STACK,
+        keySize: 0,
+        maxEntries,
+        valueSize,
+    })
+    return new ConvQueueMap(ref, valueConv)
 }

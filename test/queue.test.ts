@@ -1,4 +1,4 @@
-import { createMap, ConvQueueMap, u32type, MapType, RawQueueMap, MapRef } from '../lib'
+import { createMap, ConvQueueMap, u32type, MapType, RawQueueMap, MapRef, createQueueMap, createStackMap } from '../lib'
 import { conditionalTest, kernelAtLeast, isRoot } from './util'
 
 ; (kernelAtLeast('4.20') && isRoot ? describe : describe.skip)('RawQueueMap tests', () => {
@@ -88,8 +88,20 @@ import { conditionalTest, kernelAtLeast, isRoot } from './util'
         queue.push(2341).push(235).push(84)
         expect([...queue.consumeValues(2)]).toStrictEqual([ 2341, 235 ])
         expect([...queue.consumeValues(2)]).toStrictEqual([ 84 ])
+    })
 
+    it('helper functions', () => {
+        const queue = createQueueMap(7, 4, u32type)
+        expect(queue.ref.type).toBe(MapType.QUEUE)
+        expect(queue.ref.maxEntries).toBe(7)
+        expect(queue.ref.valueSize).toBe(4)
         queue.ref.close()
+
+        const stack = createStackMap(7, 4, u32type)
+        expect(stack.ref.type).toBe(MapType.STACK)
+        expect(stack.ref.maxEntries).toBe(7)
+        expect(stack.ref.valueSize).toBe(4)
+        stack.ref.close()
     })
 
     conditionalTest(kernelAtLeast('5.2') && isRoot, 'freezing', () => {
