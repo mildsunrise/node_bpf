@@ -187,7 +187,6 @@ describe('ConvMap tests', () => {
         
         expect(sortKeys(map)).toStrictEqual([])
         expect(map.get(2)).toBeUndefined()
-        //expect(map.getDelete(2)).toBeUndefined()
         expect(map.delete(2)).toBe(false)
         
         map.set(2, 5)
@@ -212,11 +211,6 @@ describe('ConvMap tests', () => {
         expect(sortKeys(map)).toStrictEqual([ [0, 4] ])
         expect(map.get(2)).toBeUndefined()
         expect(map.get(0)).toStrictEqual(4)
-
-        //expect(map.getDelete(0)).toStrictEqual(4)
-        //expect(sortKeys(map)).toStrictEqual([])
-        //expect(map.get(0)).toBeUndefined()
-        //expect(map.delete(0)).toBe(false)
 
         map.ref.close()
     })
@@ -249,7 +243,6 @@ describe('ConvMap tests', () => {
         expect([...map.keys()].sort()).toStrictEqual([ 0, 2, 3 ])
         expect([...map.values()].sort()).toStrictEqual([ 4, 7, 8 ])
 
-        //expect(sortKeys(map.consumeEntries())).toStrictEqual([ [0, 4], [2, 8], [3, 7] ])
         map.clear()
         expect(sortKeys(map)).toStrictEqual([])
 
@@ -333,16 +326,37 @@ describe('ConvMap tests', () => {
         expect(() => map.deleteBatch([])).toThrow()
     })
 
-    conditionalTest(kernelAtLeast('4.20') && isRoot, 'QUEUE / STACK operations', () => {
+    function testQueue(type: MapType, isFIFO: boolean) {
         const ref = createMap({
-            type: MapType.QUEUE,
-            keySize: 4,
+            type,
+            keySize: 0,
             valueSize: 4,
             maxEntries: 5,
         })
-        const map = new ConvMap(ref, u32type, u32type)
+        const map = new ConvMap(ref, { parse() {}, format() {} }, u32type)
 
-        // FIXME: move getDelete / consumeEntries to a test with STACK
-    })
+        // get is used to peek the next value
+        expect(map.get()).toBeUndefined()
+        // getDelete() is used to consume the next value
+        expect(map.getDelete()).toBeUndefined()
+
+        // set() is used to push a value to the queue
+        map.set(undefined, 2341)
+        map.set(undefined, 235)
+        map.set(undefined, 84)
+        expect(map.get()).toBe(isFIFO ? 2341 : 84)
+
+        expect(map.getDelete()).toBe(isFIFO ? 2341 : 84)
+        expect(map.getDelete()).toBe(isFIFO ? 235 : 235)
+        expect(map.getDelete()).toBe(isFIFO ? 84 : 2341)
+
+        expect(map.getDelete()).toBeUndefined()
+    }
+
+    conditionalTest(kernelAtLeast('4.20') && isRoot, 'QUEUE operations',
+        () => testQueue(MapType.QUEUE, true))
+
+    conditionalTest(kernelAtLeast('4.20') && isRoot, 'STACK operations',
+        () => testQueue(MapType.STACK, false))
 
 })
