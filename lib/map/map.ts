@@ -1,7 +1,8 @@
+import { constants } from 'os'
 import { native, checkU32 } from '../util'
 import { checkStatus } from '../exception'
 import { MapRef, TypeConversion, TypeConversionWrap, fixCount, checkAllProcessed } from './common'
-const { ENOENT } = native
+const { ENOENT } = constants.errno
 
 /**
  * Generic interface to manipulate an eBPF map of any type. API-compatible

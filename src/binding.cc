@@ -324,10 +324,6 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     FDRef::Init(env, exports);
     EXPOSE_FUNCTION("dup", Dup);
 
-    exports["ENOENT"] = Napi::Number::New(env, ENOENT);
-    exports["EFAULT"] = Napi::Number::New(env, EFAULT);
-    exports["EINVAL"] = Napi::Number::New(env, EINVAL);
-
     EXPOSE_FUNCTION("mapUpdateElem", MapUpdateElem);
     EXPOSE_FUNCTION("mapLookupElem", MapLookupElem);
     EXPOSE_FUNCTION("mapLookupAndDeleteElem", MapLookupAndDeleteElem);

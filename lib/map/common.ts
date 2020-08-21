@@ -1,7 +1,8 @@
+import { constants } from 'os'
 import { native, FD, asUint32Array, checkU32 } from '../util'
 import { checkStatus, BPFError } from '../exception'
 import { MapType, MapFlags } from '../enums'
-const { EFAULT, EINVAL } = native
+const { EFAULT, EINVAL } = constants.errno
 
 // FIXME: we are excluding BTF related parameters for now
 

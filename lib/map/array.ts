@@ -1,8 +1,9 @@
+import { constants } from 'os'
 import { native, asUint8Array, checkU32, sliceBuffer } from '../util'
 import { checkStatus } from '../exception'
 import { MapRef, TypeConversion, TypeConversionWrap, createMap, fixCount, checkAllProcessed } from './common'
 import { MapType } from '../enums'
-const { ENOENT } = native
+const { ENOENT } = constants.errno
 
 /**
  * Specialized version of [[IMap]] for `ARRAY` maps.
