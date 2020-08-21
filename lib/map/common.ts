@@ -17,7 +17,7 @@ export interface MapDefOptional {
     /**
      * For map-in-map types: parameters for the inner map,
      * or FD of an existing map to clone parameters from.
-     * The existing map's lifetime isn't affected in any way.
+     * The passed map's lifetime isn't affected in any way.
      */
     innerMap?: MapDef | MapRef | number
     /** For offloading, ifindex of network device to create the map on (since Linux 4.16) */

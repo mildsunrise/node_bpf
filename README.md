@@ -24,7 +24,7 @@ Apart from the generic API, there's a few other sub-APIs for specific map types,
 
 There's prebuilds for x86 and x64, so you don't need anything in those cases.
 
-For other cases, libbpf and its dependencies are included so you only need a compiler:
+For other archs, libbpf and its dependencies are included so you only need a compiler:
 
 ~~~ bash
 sudo apt install build-essential
