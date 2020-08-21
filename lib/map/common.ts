@@ -194,30 +194,10 @@ export function createMap(desc: MapDef): MapRef {
 
         const status: number = native.createMap(desc)
         checkStatus('bpf_create_map_xattr', status)
-        return wrapFDWithFallback(status, desc)
+        return createMapRef(status, { transfer: true, parameters: desc })
     } finally {
         innerRef && innerRef.close!()
     }
-}
-
-function wrapFDWithFallback(fd: number, desc: MapDef): MapRef {
-    try {
-        // Attempt to use createMapRef to get info if available
-        return createMapRef(fd, { transfer: true })
-    } catch (e) {
-        if (!(e instanceof BPFError && e.errno === EINVAL))
-            throw e;
-    }
-
-    // Fall back to building MapRef manually using MapDef as info
-    const ref: MapRef = new native.FDRef(fd)
-    ref.type = desc.type
-    ref.keySize = desc.keySize
-    ref.valueSize = desc.valueSize
-    ref.maxEntries = desc.maxEntries
-    ref.flags = desc.flags || 0
-    Object.freeze(ref) // prevent changes to the info
-    return ref
 }
 
 /**
@@ -225,7 +205,10 @@ function wrapFDWithFallback(fd: number, desc: MapDef): MapRef {
  * obtain its information and return a [[MapRef]] instance
  * pointing to that map (but creating a duplicate descriptor).
  * 
- * Since Linux 4.13.
+ * **Note:** If `parameters` is passed, it will be used as
+ * a fallback to build the `MapRef` for kernels older than 4.13.
+ * Make sure it's correct. If not passed, the call will fail
+ * for older kernels.
  * 
  * If `transfer` is `true`, the passed FD itself is used
  * (taking ownership of it) instead of creating a new FD first.
@@ -241,17 +224,28 @@ function wrapFDWithFallback(fd: number, desc: MapDef): MapRef {
  * @returns [[MapRef]] instance
  */
 export function createMapRef(fd: number, options?: {
+    parameters?: MapDef,
     transfer?: boolean
 }): MapRef {
-    const [ status, info ] = native.getMapInfo(fd)
-    checkStatus('bpf_obj_get_info_by_fd', status)
-
     if (!(options && options.transfer)) {
         fd = native.dup(fd)
         checkStatus('dup', fd)
     }
     const ref = new native.FDRef(fd)
-    Object.assign(ref, info)
+
+    const [ status, info ] = native.getMapInfo(fd)
+    if (status === -EINVAL && options && options.parameters) {
+        // Fall back to building MapRef manually using MapDef as info
+        const desc = options && options.parameters
+        ref.type = desc.type
+        ref.keySize = desc.keySize
+        ref.valueSize = desc.valueSize
+        ref.maxEntries = desc.maxEntries
+        ref.flags = desc.flags || 0
+    } else {
+        checkStatus('bpf_obj_get_info_by_fd', status)
+        Object.assign(ref, info)    
+    }
     Object.freeze(ref) // prevent changes to the info
     return ref
 }
