@@ -6,29 +6,9 @@ const { EFAULT, EINVAL } = constants.errno
 
 // FIXME: we are excluding BTF related parameters for now
 
-/**
- * Parameters to create an eBPF map.
- * 
- * After the map is created, the parameters may be different
- * because of rounding, truncating or type-dependent behaviour.
- */
-export interface MapDef {
-    /**
-     * Map type. This decides the available operations and
-     * their semantics. Keep in mind that not all of the types
-     * may be supported by your kernel.
-     */
-    type: MapType
-    /** Size of every key, in bytes */
-    keySize: number
-    /** Size of every value, in bytes */
-    valueSize: number
-    /** Maximum amount of entries: the meaning of this is type-dependent */
-    maxEntries: number
+export interface MapDefOptional {
     /** Flags specified on map creation, see [[MapFlags]] */
     flags?: number
-    
-    // Optional
 
     /** Map name (might get truncated if longer than [[OBJ_NAME_LEN]]) (since Linux 4.15) */
     name?: string
@@ -42,6 +22,27 @@ export interface MapDef {
     innerMap?: MapDef | MapRef | number
     /** For offloading, ifindex of network device to create the map on (since Linux 4.16) */
     ifindex?: number
+}
+
+/**
+ * Parameters to create an eBPF map.
+ * 
+ * After the map is created, the parameters may be different
+ * because of rounding, truncating or type-dependent behaviour.
+ */
+export interface MapDef extends MapDefOptional {
+    /**
+     * Map type. This decides the available operations and
+     * their semantics. Keep in mind that not all of the types
+     * may be supported by your kernel.
+     */
+    type: MapType
+    /** Size of every key, in bytes */
+    keySize: number
+    /** Size of every value, in bytes */
+    valueSize: number
+    /** Maximum amount of entries: the meaning of this is type-dependent */
+    maxEntries: number
 }
 
 /**

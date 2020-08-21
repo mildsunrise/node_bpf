@@ -1,7 +1,7 @@
 import { constants } from 'os'
 import { native, asUint8Array, checkU32, sliceBuffer } from '../util'
 import { checkStatus } from '../exception'
-import { MapRef, TypeConversion, TypeConversionWrap, createMap, fixCount, checkAllProcessed } from './common'
+import { MapRef, TypeConversion, TypeConversionWrap, createMap, fixCount, checkAllProcessed, MapDefOptional } from './common'
 import { MapType } from '../constants'
 const { ENOENT } = constants.errno
 
@@ -395,15 +395,17 @@ export class ConvArrayMap<V> implements IArrayMap<V> {
  * @param valueSize Size of each value, in bytes (will be
  * rounded up to a multiple of 8)
  * @param valueConv Type conversion for values
- * @returns [[MapRef]] instance, holding a reference
- * to the newly created map, and its actual parameters
+ * @param options Other map options
+ * @returns Map instance
  */
 export function createArrayMap<V>(
     length: number,
     valueSize: number,
-    valueConv: TypeConversion<V>
+    valueConv: TypeConversion<V>,
+    options?: MapDefOptional
 ): ConvArrayMap<V> {
     const ref = createMap({
+        ...options,
         type: MapType.ARRAY,
         keySize: 4,
         maxEntries: length,
