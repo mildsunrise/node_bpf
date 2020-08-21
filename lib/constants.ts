@@ -1,8 +1,8 @@
 /**
- * Exports BPF uapi enums.
+ * Exports BPF uapi enums and other constants.
  * 
  * Keep synchronized with `deps/libbpf/include/uapi/linux/bpf.h`.
- * For practicity, we omit the UNSPEC = 0 key from each enum.
+ * For practicity, we omit the UNSPEC = 0 key from each enum, if present.
  */
 /** */
 
