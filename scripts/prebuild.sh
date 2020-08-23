@@ -4,7 +4,7 @@
 set -e
 
 # Register binfmt handlers so we can emulate other archs
-docker run --rm --privileged multiarch/qemu-user-static --reset
+docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 
 # Prebuild inside an older distro to target glibc 2.23
 # It's from 2016 so should be enough for most people
@@ -31,5 +31,5 @@ scripts/run_in_docker.sh arm64v8/$IMAGE 14 \
 # (since we are just testing for Node.js / glibc,
 # compatibility, I don't think it's useful to test
 # more than one arch here?)
-scripts/load_prebuild.sh
 scripts/run_in_docker.sh ubuntu:xenial 12 scripts/load_prebuild.sh
+scripts/load_prebuild.sh
