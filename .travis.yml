@@ -4,6 +4,7 @@ cache:
         - ~/.npm
 notifications:
     email: false
+dist: focal
 arch:
     - amd64
     - arm64
