@@ -26,7 +26,7 @@
         "configure": "node-gyp configure",
         "build": "node-gyp build && tsc",
         "prepare": "rm -rf dist; tsc",
-        "prepublishOnly": "./prebuild.sh",
+        "prepublishOnly": "scripts/prebuild.sh",
         "test": "jest --coverage",
         "test:watch": "jest --coverage --watch",
         "docs": "typedoc --out docs lib/index.ts",
