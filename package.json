@@ -27,6 +27,7 @@
         "build": "node-gyp build && tsc",
         "prepare": "rm -rf dist; tsc",
         "prepublishOnly": "scripts/prebuild.sh",
+        "prebuildify": "prebuildify",
         "test": "jest --coverage",
         "test:watch": "jest --coverage --watch",
         "docs": "typedoc --out docs lib/index.ts",
