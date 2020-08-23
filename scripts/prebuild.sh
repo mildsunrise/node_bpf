@@ -3,6 +3,9 @@
 # Dependencies: docker (plus permissions to use it)
 set -e
 
+# Register binfmt handlers so we can emulate other archs
+docker run --rm --privileged multiarch/qemu-user-static --reset
+
 # Prebuild inside an older distro to target glibc 2.23
 # It's from 2016 so should be enough for most people
 IMAGE="ubuntu:xenial"
@@ -15,6 +18,14 @@ rm -rf prebuilds
 scripts/run_in_docker.sh $IMAGE 14 \
     scripts/with_copy.sh \
     scripts/do_prebuild.sh "ia32 x64"
+
+scripts/run_in_docker.sh arm32v7/$IMAGE 14 \
+    scripts/with_copy.sh \
+    scripts/do_prebuild.sh "arm"
+
+scripts/run_in_docker.sh arm64v8/$IMAGE 14 \
+    scripts/with_copy.sh \
+    scripts/do_prebuild.sh "arm64"
 
 # Test that they load correctly
 # (since we are just testing for Node.js / glibc,

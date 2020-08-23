@@ -22,7 +22,7 @@ Apart from the generic API, there's a few other sub-APIs for specific map types,
 
 ## Usage
 
-There's prebuilds for x86 and x64, so you don't need anything in those cases.
+There's prebuilds for x86, x64, arm32v7 and arm64v8, so you don't need anything in those cases.
 
 For other archs, libbpf and its dependencies are included so you only need a compiler:
 
