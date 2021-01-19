@@ -293,6 +293,6 @@ export function checkAllProcessed(count: number | undefined, batchSize: number) 
 export function objGet(path: String): number | undefined {
     const fd = native.bpfObjGet(path)
     if (fd < 0)
-	return undefined
+        return undefined
     return fd
 }
