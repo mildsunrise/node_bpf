@@ -289,3 +289,10 @@ export function checkAllProcessed(count: number | undefined, batchSize: number) 
         throw Error(`Assertion failed: ${count} of ${batchSize} entries processed`)
     }
 }
+
+export function objGet(path: String): number | undefined {
+    const fd = native.bpfObjGet(path)
+    if (fd < 0)
+	return undefined
+    return fd
+}
