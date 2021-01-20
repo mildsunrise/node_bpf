@@ -334,7 +334,7 @@ export class RawMap implements IMap<Buffer, Buffer> {
         this._kBuf(key)
         const nr_cpus = native.getNumPossibleCPUs()
         checkStatus('libbpf_num_possible_cpus', nr_cpus)
-	// allocate large enough Buffer to store values read from all CPUs
+        // allocate large enough Buffer to store values read from all CPUs
         out = this._getBuf(this.ref.valueSize * nr_cpus, out)
         const status = native.mapLookupElem(this.ref.fd, key, out, flags)
         if (status == -ENOENT)
