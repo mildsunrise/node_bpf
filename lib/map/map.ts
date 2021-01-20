@@ -331,8 +331,8 @@ export class RawMap implements IMap<Buffer, Buffer> {
 
     getPerCPU(key: Buffer, flags: number = 0, out?: Buffer): Buffer | undefined {
         this._kBuf(key)
-	const nr_cpus = native.getNumPossibleCPUs()
-	checkStatus('libbpf_num_possible_cpus', nr_cpus)
+        const nr_cpus = native.getNumPossibleCPUs()
+        checkStatus('libbpf_num_possible_cpus', nr_cpus)
         out = this._getBuf(this.ref.valueSize * nr_cpus, out)
         const status = native.mapLookupElem(this.ref.fd, key, out, flags)
         if (status == -ENOENT)
