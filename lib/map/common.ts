@@ -289,3 +289,17 @@ export function checkAllProcessed(count: number | undefined, batchSize: number) 
         throw Error(`Assertion failed: ${count} of ${batchSize} entries processed`)
     }
 }
+
+/**
+ * Get a file descriptor (fd) of a pinned eBPF object.
+ *
+ * Since Linux 4.4.
+ *
+ * @param path pinned eBPF object path
+ * @returns fd file descriptor
+ */
+export function objGet(path: String): number {
+    const fd = native.bpfObjGet(path)
+    checkStatus('bpf_obj_get', fd)
+    return fd
+}

@@ -308,6 +308,13 @@ Napi::Value MapGetFdById(const CallbackInfo& info) {
     return ToStatus(env, bpf_map_get_fd_by_id(id));
 }
 
+Napi::Value BpfObjGet(const CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    size_t a = 0;
+    auto path = GetString(env, info[a++]);
+    return ToStatus(env, bpf_obj_get(path.c_str()));
+}
+
 #define EXPOSE_FUNCTION(NAME, METHOD) exports.Set(NAME, Napi::Function::New(env, METHOD, NAME))
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
@@ -337,6 +344,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     EXPOSE_FUNCTION("createMap", CreateMap);
     EXPOSE_FUNCTION("getMapInfo", GetMapInfo);
     EXPOSE_FUNCTION("mapGetFdById", MapGetFdById);
+    EXPOSE_FUNCTION("bpfObjGet", BpfObjGet);
 
     return exports;
 }
