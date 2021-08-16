@@ -16,6 +16,7 @@ URL="https://github.com/libbpf/libbpf/archive/refs/tags/v$VERSION.tar.gz"
 ORIG="libbpf-$VERSION"
 curl -fL "$URL" | tar -xz "$ORIG"
 mv "$ORIG" libbpf
+rm -r libbpf/travis-ci
 
 if [ -z "$(git status --porcelain)" ]; then
   echo "error: no changes"; exit 1
