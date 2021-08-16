@@ -42,6 +42,7 @@ export enum ProgramType {
     STRUCT_OPS,
     EXT,
     LSM,
+    SK_LOOKUP,
 }
 
 export enum AttachType {
@@ -79,6 +80,11 @@ export enum AttachType {
     CGROUP_INET4_GETSOCKNAME,
     CGROUP_INET6_GETSOCKNAME,
     XDP_DEVMAP,
+    CGROUP_INET_SOCK_RELEASE,
+    XDP_CPUMAP,
+    SK_LOOKUP,
+    XDP,
+    SK_SKB_VERDICT,    
 }
 
 export enum MapType {
@@ -176,6 +182,12 @@ export enum MapFlags {
 
     /** Enable memory-mapping BPF map (since Linux 5.5) */
     MMAPABLE = (1 << 10),
+
+    /** Share perf_event among processes (since Linux 5.10) */
+    PRESERVE_ELEMS = (1 << 11),
+
+    /** Create a map that is suitable to be an inner map with dynamic max entries (since Linux 5.10) */
+    INNER_MAP = (1 << 12),
 }
 
 /** Flags for `set` operation on a map */

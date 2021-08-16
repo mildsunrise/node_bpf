@@ -9,7 +9,48 @@
 #ifndef __LIBBPF_LIBBPF_INTERNAL_H
 #define __LIBBPF_LIBBPF_INTERNAL_H
 
+#include <stdlib.h>
+#include <limits.h>
+
+/* make sure libbpf doesn't use kernel-only integer typedefs */
+#pragma GCC poison u8 u16 u32 u64 s8 s16 s32 s64
+
+/* prevent accidental re-addition of reallocarray() */
+#pragma GCC poison reallocarray
+
 #include "libbpf.h"
+#include "btf.h"
+
+#ifndef EM_BPF
+#define EM_BPF 247
+#endif
+
+#ifndef R_BPF_64_64
+#define R_BPF_64_64 1
+#endif
+#ifndef R_BPF_64_ABS64
+#define R_BPF_64_ABS64 2
+#endif
+#ifndef R_BPF_64_ABS32
+#define R_BPF_64_ABS32 3
+#endif
+#ifndef R_BPF_64_32
+#define R_BPF_64_32 10
+#endif
+
+#ifndef SHT_LLVM_ADDRSIG
+#define SHT_LLVM_ADDRSIG 0x6FFF4C03
+#endif
+
+/* if libelf is old and doesn't support mmap(), fall back to read() */
+#ifndef ELF_C_READ_MMAP
+#define ELF_C_READ_MMAP ELF_C_READ
+#endif
+
+/* Older libelf all end up in this expression, for both 32 and 64 bit */
+#ifndef GELF_ST_VISIBILITY
+#define GELF_ST_VISIBILITY(o) ((o) & 0x03)
+#endif
 
 #define BTF_INFO_ENC(kind, kind_flag, vlen) \
 	((!!(kind_flag) << 31) | ((kind) << 24) | ((vlen) & BTF_MAX_VLEN))
@@ -22,7 +63,15 @@
 #define BTF_MEMBER_ENC(name, type, bits_offset) (name), (type), (bits_offset)
 #define BTF_PARAM_ENC(name, type) (name), (type)
 #define BTF_VAR_SECINFO_ENC(type, offset, size) (type), (offset), (size)
+#define BTF_TYPE_FLOAT_ENC(name, sz) \
+	BTF_TYPE_ENC(name, BTF_INFO_ENC(BTF_KIND_FLOAT, 0, 0), sz)
 
+#ifndef likely
+#define likely(x) __builtin_expect(!!(x), 1)
+#endif
+#ifndef unlikely
+#define unlikely(x) __builtin_expect(!!(x), 0)
+#endif
 #ifndef min
 # define min(x, y) ((x) < (y) ? (x) : (y))
 #endif
@@ -63,6 +112,86 @@ do {				\
 #define pr_info(fmt, ...)	__pr(LIBBPF_INFO, fmt, ##__VA_ARGS__)
 #define pr_debug(fmt, ...)	__pr(LIBBPF_DEBUG, fmt, ##__VA_ARGS__)
 
+#ifndef __has_builtin
+#define __has_builtin(x) 0
+#endif
+/*
+ * Re-implement glibc's reallocarray() for libbpf internal-only use.
+ * reallocarray(), unfortunately, is not available in all versions of glibc,
+ * so requires extra feature detection and using reallocarray() stub from
+ * <tools/libc_compat.h> and COMPAT_NEED_REALLOCARRAY. All this complicates
+ * build of libbpf unnecessarily and is just a maintenance burden. Instead,
+ * it's trivial to implement libbpf-specific internal version and use it
+ * throughout libbpf.
+ */
+static inline void *libbpf_reallocarray(void *ptr, size_t nmemb, size_t size)
+{
+	size_t total;
+
+#if __has_builtin(__builtin_mul_overflow)
+	if (unlikely(__builtin_mul_overflow(nmemb, size, &total)))
+		return NULL;
+#else
+	if (size == 0 || nmemb > ULONG_MAX / size)
+		return NULL;
+	total = nmemb * size;
+#endif
+	return realloc(ptr, total);
+}
+
+struct btf;
+struct btf_type;
+
+struct btf_type *btf_type_by_id(struct btf *btf, __u32 type_id);
+const char *btf_kind_str(const struct btf_type *t);
+const struct btf_type *skip_mods_and_typedefs(const struct btf *btf, __u32 id, __u32 *res_id);
+
+static inline enum btf_func_linkage btf_func_linkage(const struct btf_type *t)
+{
+	return (enum btf_func_linkage)(int)btf_vlen(t);
+}
+
+static inline __u32 btf_type_info(int kind, int vlen, int kflag)
+{
+	return (kflag << 31) | (kind << 24) | vlen;
+}
+
+enum map_def_parts {
+	MAP_DEF_MAP_TYPE	= 0x001,
+	MAP_DEF_KEY_TYPE	= 0x002,
+	MAP_DEF_KEY_SIZE	= 0x004,
+	MAP_DEF_VALUE_TYPE	= 0x008,
+	MAP_DEF_VALUE_SIZE	= 0x010,
+	MAP_DEF_MAX_ENTRIES	= 0x020,
+	MAP_DEF_MAP_FLAGS	= 0x040,
+	MAP_DEF_NUMA_NODE	= 0x080,
+	MAP_DEF_PINNING		= 0x100,
+	MAP_DEF_INNER_MAP	= 0x200,
+
+	MAP_DEF_ALL		= 0x3ff, /* combination of all above */
+};
+
+struct btf_map_def {
+	enum map_def_parts parts;
+	__u32 map_type;
+	__u32 key_type_id;
+	__u32 key_size;
+	__u32 value_type_id;
+	__u32 value_size;
+	__u32 max_entries;
+	__u32 map_flags;
+	__u32 numa_node;
+	__u32 pinning;
+};
+
+int parse_btf_map_def(const char *map_name, struct btf *btf,
+		      const struct btf_type *def_t, bool strict,
+		      struct btf_map_def *map_def, struct btf_map_def *inner_def);
+
+void *libbpf_add_mem(void **data, size_t *cap_cnt, size_t elem_sz,
+		     size_t cur_cnt, size_t max_cnt, size_t add_cnt);
+int libbpf_ensure_mem(void **data, size_t *cap_cnt, size_t elem_sz, size_t need_cnt);
+
 static inline bool libbpf_validate_opts(const char *opts,
 					size_t opts_sz, size_t user_sz,
 					const char *type_name)
@@ -94,28 +223,52 @@ static inline bool libbpf_validate_opts(const char *opts,
 	((opts) && opts->sz >= offsetofend(typeof(*(opts)), field))
 #define OPTS_GET(opts, field, fallback_value) \
 	(OPTS_HAS(opts, field) ? (opts)->field : fallback_value)
+#define OPTS_SET(opts, field, value)		\
+	do {					\
+		if (OPTS_HAS(opts, field))	\
+			(opts)->field = value;	\
+	} while (0)
 
 int parse_cpu_mask_str(const char *s, bool **mask, int *mask_sz);
 int parse_cpu_mask_file(const char *fcpu, bool **mask, int *mask_sz);
 int libbpf__load_raw_btf(const char *raw_types, size_t types_len,
 			 const char *str_sec, size_t str_len);
 
+struct bpf_prog_load_params {
+	enum bpf_prog_type prog_type;
+	enum bpf_attach_type expected_attach_type;
+	const char *name;
+	const struct bpf_insn *insns;
+	size_t insn_cnt;
+	const char *license;
+	__u32 kern_version;
+	__u32 attach_prog_fd;
+	__u32 attach_btf_obj_fd;
+	__u32 attach_btf_id;
+	__u32 prog_ifindex;
+	__u32 prog_btf_fd;
+	__u32 prog_flags;
+
+	__u32 func_info_rec_size;
+	const void *func_info;
+	__u32 func_info_cnt;
+
+	__u32 line_info_rec_size;
+	const void *line_info;
+	__u32 line_info_cnt;
+
+	__u32 log_level;
+	char *log_buf;
+	size_t log_buf_sz;
+};
+
+int libbpf__bpf_prog_load(const struct bpf_prog_load_params *load_attr);
+
 int bpf_object__section_size(const struct bpf_object *obj, const char *name,
 			     __u32 *size);
 int bpf_object__variable_offset(const struct bpf_object *obj, const char *name,
 				__u32 *off);
-
-struct nlattr;
-typedef int (*libbpf_dump_nlmsg_t)(void *cookie, void *msg, struct nlattr **tb);
-int libbpf_netlink_open(unsigned int *nl_pid);
-int libbpf_nl_get_link(int sock, unsigned int nl_pid,
-		       libbpf_dump_nlmsg_t dump_link_nlmsg, void *cookie);
-int libbpf_nl_get_class(int sock, unsigned int nl_pid, int ifindex,
-			libbpf_dump_nlmsg_t dump_class_nlmsg, void *cookie);
-int libbpf_nl_get_qdisc(int sock, unsigned int nl_pid, int ifindex,
-			libbpf_dump_nlmsg_t dump_qdisc_nlmsg, void *cookie);
-int libbpf_nl_get_filter(int sock, unsigned int nl_pid, int ifindex, int handle,
-			 libbpf_dump_nlmsg_t dump_filter_nlmsg, void *cookie);
+struct btf *btf_get_from_fd(int btf_fd, struct btf *base_btf);
 
 struct btf_ext_info {
 	/*
@@ -138,6 +291,44 @@ struct btf_ext_info {
 	     i < (sec)->num_info;					\
 	     i++, rec = (void *)rec + (seg)->rec_size)
 
+/*
+ * The .BTF.ext ELF section layout defined as
+ *   struct btf_ext_header
+ *   func_info subsection
+ *
+ * The func_info subsection layout:
+ *   record size for struct bpf_func_info in the func_info subsection
+ *   struct btf_sec_func_info for section #1
+ *   a list of bpf_func_info records for section #1
+ *     where struct bpf_func_info mimics one in include/uapi/linux/bpf.h
+ *     but may not be identical
+ *   struct btf_sec_func_info for section #2
+ *   a list of bpf_func_info records for section #2
+ *   ......
+ *
+ * Note that the bpf_func_info record size in .BTF.ext may not
+ * be the same as the one defined in include/uapi/linux/bpf.h.
+ * The loader should ensure that record_size meets minimum
+ * requirement and pass the record as is to the kernel. The
+ * kernel will handle the func_info properly based on its contents.
+ */
+struct btf_ext_header {
+	__u16	magic;
+	__u8	version;
+	__u8	flags;
+	__u32	hdr_len;
+
+	/* All offsets are in bytes relative to the end of this header */
+	__u32	func_info_off;
+	__u32	func_info_len;
+	__u32	line_info_off;
+	__u32	line_info_len;
+
+	/* optional part of .BTF.ext header */
+	__u32	core_relo_off;
+	__u32	core_relo_len;
+};
+
 struct btf_ext {
 	union {
 		struct btf_ext_header *hdr;
@@ -145,7 +336,7 @@ struct btf_ext {
 	};
 	struct btf_ext_info func_info;
 	struct btf_ext_info line_info;
-	struct btf_ext_info field_reloc_info;
+	struct btf_ext_info core_relo_info;
 	__u32 data_size;
 };
 
@@ -170,32 +361,40 @@ struct bpf_line_info_min {
 	__u32	line_col;
 };
 
-/* bpf_field_info_kind encodes which aspect of captured field has to be
- * adjusted by relocations. Currently supported values are:
- *   - BPF_FIELD_BYTE_OFFSET: field offset (in bytes);
- *   - BPF_FIELD_EXISTS: field existence (1, if field exists; 0, otherwise);
+/* bpf_core_relo_kind encodes which aspect of captured field/type/enum value
+ * has to be adjusted by relocations.
  */
-enum bpf_field_info_kind {
+enum bpf_core_relo_kind {
 	BPF_FIELD_BYTE_OFFSET = 0,	/* field byte offset */
-	BPF_FIELD_BYTE_SIZE = 1,
+	BPF_FIELD_BYTE_SIZE = 1,	/* field size in bytes */
 	BPF_FIELD_EXISTS = 2,		/* field existence in target kernel */
-	BPF_FIELD_SIGNED = 3,
-	BPF_FIELD_LSHIFT_U64 = 4,
-	BPF_FIELD_RSHIFT_U64 = 5,
+	BPF_FIELD_SIGNED = 3,		/* field signedness (0 - unsigned, 1 - signed) */
+	BPF_FIELD_LSHIFT_U64 = 4,	/* bitfield-specific left bitshift */
+	BPF_FIELD_RSHIFT_U64 = 5,	/* bitfield-specific right bitshift */
+	BPF_TYPE_ID_LOCAL = 6,		/* type ID in local BPF object */
+	BPF_TYPE_ID_TARGET = 7,		/* type ID in target kernel */
+	BPF_TYPE_EXISTS = 8,		/* type existence in target kernel */
+	BPF_TYPE_SIZE = 9,		/* type size in bytes */
+	BPF_ENUMVAL_EXISTS = 10,	/* enum value existence in target kernel */
+	BPF_ENUMVAL_VALUE = 11,		/* enum value integer value */
 };
 
-/* The minimum bpf_field_reloc checked by the loader
+/* The minimum bpf_core_relo checked by the loader
  *
- * Field relocation captures the following data:
+ * CO-RE relocation captures the following data:
  * - insn_off - instruction offset (in bytes) within a BPF program that needs
  *   its insn->imm field to be relocated with actual field info;
  * - type_id - BTF type ID of the "root" (containing) entity of a relocatable
- *   field;
+ *   type or field;
  * - access_str_off - offset into corresponding .BTF string section. String
- *   itself encodes an accessed field using a sequence of field and array
- *   indicies, separated by colon (:). It's conceptually very close to LLVM's
- *   getelementptr ([0]) instruction's arguments for identifying offset to 
- *   a field.
+ *   interpretation depends on specific relocation kind:
+ *     - for field-based relocations, string encodes an accessed field using
+ *     a sequence of field and array indices, separated by colon (:). It's
+ *     conceptually very close to LLVM's getelementptr ([0]) instruction's
+ *     arguments for identifying offset to a field.
+ *     - for type-based relocations, strings is expected to be just "0";
+ *     - for enum value-based relocations, string contains an index of enum
+ *     value within its enum type;
  *
  * Example to provide a better feel.
  *
@@ -226,11 +425,18 @@ enum bpf_field_info_kind {
  *
  *   [0] https://llvm.org/docs/LangRef.html#getelementptr-instruction
  */
-struct bpf_field_reloc {
+struct bpf_core_relo {
 	__u32   insn_off;
 	__u32   type_id;
 	__u32   access_str_off;
-	enum bpf_field_info_kind kind;
+	enum bpf_core_relo_kind kind;
 };
+
+typedef int (*type_id_visit_fn)(__u32 *type_id, void *ctx);
+typedef int (*str_off_visit_fn)(__u32 *str_off, void *ctx);
+int btf_type_visit_type_ids(struct btf_type *t, type_id_visit_fn visit, void *ctx);
+int btf_type_visit_str_offs(struct btf_type *t, str_off_visit_fn visit, void *ctx);
+int btf_ext_visit_type_ids(struct btf_ext *btf_ext, type_id_visit_fn visit, void *ctx);
+int btf_ext_visit_str_offs(struct btf_ext *btf_ext, str_off_visit_fn visit, void *ctx);
 
 #endif /* __LIBBPF_LIBBPF_INTERNAL_H */

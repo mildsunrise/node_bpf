@@ -321,7 +321,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     auto versions = Napi::Object::New(env);
     // Keep synchronized with deps
     versions["libelf"] = Napi::String::New(env, "0.185");
-    versions["libbpf"] = Napi::String::New(env, "0.0.9");
+    versions["libbpf"] = Napi::String::New(env, "0.4.0");
     versions["btf"] = Napi::Number::New(env, BTF_VERSION);
     utsname kernel_info;
     if (!uname(&kernel_info))

@@ -1,7 +1,5 @@
 {
-    "variables": {
-        "need_reallocarray": "<!(libbpf/scripts/check-reallocarray.sh)",
-    },
+    # Should automatically use zlib bundled with Node.js.
 
     "targets": [
         {
@@ -21,6 +19,8 @@
                 "libbpf/src/btf_dump.c",
                 "libbpf/src/hashmap.c",
                 "libbpf/src/ringbuf.c",
+                "libbpf/src/strset.c",
+                "libbpf/src/linker.c",
             ],
             "include_dirs": [
                 "libbpf/src",
@@ -36,11 +36,6 @@
                     "libbpf/include/uapi",
                 ],
             },
-            "conditions": [
-                ['need_reallocarray != ""', {
-                    "defines": [ "COMPAT_NEED_REALLOCARRAY" ],
-                }],
-            ]
         },
     ]
 }
