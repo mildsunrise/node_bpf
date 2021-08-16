@@ -298,7 +298,7 @@ export function checkAllProcessed(count: number | undefined, batchSize: number) 
  * @param path pinned eBPF object path
  * @returns fd file descriptor
  */
-export function objGet(path: String): number {
+export function objGet(path: string): number {
     const fd = native.bpfObjGet(path)
     checkStatus('bpf_obj_get', fd)
     return fd
