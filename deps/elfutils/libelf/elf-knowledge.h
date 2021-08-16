@@ -69,9 +69,9 @@
 
    Several years later the ABI for the 64-bit S390s was developed.
    Many things were copied from the IA-64 ABI (which uses the correct
-   32-bit entry size) but what do these people do?  They use 64-bit
-   entries.  It is really shocking to see what kind of morons are out
-   there.  And even worse: they are allowed to design ABIs.  */
+   32-bit entry size) but it does get the SHT_HASH entry size wrong by
+   using a 64-bit entry size.  So now we need this macro to special
+   case both the alpha and s390x ABIs.  */
 #define SH_ENTSIZE_HASH(Ehdr) \
   ((Ehdr)->e_machine == EM_ALPHA					      \
    || ((Ehdr)->e_machine == EM_S390					      \

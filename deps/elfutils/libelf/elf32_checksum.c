@@ -115,7 +115,7 @@ elfw2(LIBELFBITS,checksum) (Elf *elf)
 
       /* To compute the checksum we need to get to the data.  For
 	 repeatable results we must use the external format.  The data
-	 we get with 'elf'getdata' might be changed for endianess
+	 we get with 'elf'getdata' might be changed for endianness
 	 reasons.  Therefore we use 'elf_rawdata' if possible.  But
 	 this function can fail if the data was constructed by the
 	 program.  In this case we have to use 'elf_getdata' and

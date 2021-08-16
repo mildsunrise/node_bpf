@@ -44,6 +44,7 @@ __elf_getphdrnum_rdlock (Elf *elf, size_t *dst)
  if (unlikely (elf->state.elf64.ehdr == NULL))
    {
      /* Maybe no ELF header was created yet.  */
+     *dst = 0;
      __libelf_seterrno (ELF_E_WRONG_ORDER_EHDR);
      return -1;
    }

@@ -113,14 +113,12 @@ const uint_fast8_t __libelf_type_aligns[ELFCLASSNUM - 1][ELF_T_NUM] =
 
 Elf_Type
 internal_function
-__libelf_data_type (Elf *elf, int sh_type, GElf_Xword align)
+__libelf_data_type (GElf_Ehdr *ehdr, int sh_type, GElf_Xword align)
 {
   /* Some broken ELF ABI for 64-bit machines use the wrong hash table
      entry size.  See elf-knowledge.h for more information.  */
-  if (sh_type == SHT_HASH && elf->class == ELFCLASS64)
+  if (sh_type == SHT_HASH && ehdr->e_ident[EI_CLASS] == ELFCLASS64)
     {
-      GElf_Ehdr ehdr_mem;
-      GElf_Ehdr *ehdr = __gelf_getehdr_rdlock (elf, &ehdr_mem);
       return (SH_ENTSIZE_HASH (ehdr) == 4 ? ELF_T_WORD : ELF_T_XWORD);
     }
   else
@@ -365,7 +363,13 @@ __libelf_set_rawdata_wrlock (Elf_Scn *scn)
   if ((flags & SHF_COMPRESSED) != 0)
     scn->rawdata.d.d_type = ELF_T_CHDR;
   else
-    scn->rawdata.d.d_type = __libelf_data_type (elf, type, align);
+    {
+      GElf_Ehdr ehdr_mem;
+      GElf_Ehdr *ehdr = __gelf_getehdr_rdlock (elf, &ehdr_mem);
+      if (unlikely (ehdr == NULL))
+	return 1;
+      scn->rawdata.d.d_type = __libelf_data_type (ehdr, type, align);
+    }
   scn->rawdata.d.d_off = 0;
 
   /* Make sure the alignment makes sense.  d_align should be aligned both

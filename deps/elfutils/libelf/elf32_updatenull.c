@@ -267,6 +267,18 @@ __elfw2(LIBELFBITS,updatenull_wrlock) (Elf *elf, int *change_bop, size_t shnum)
 	      update_if_changed (shdr->sh_entsize, sh_entsize,
 				 scn->shdr_flags);
 
+	      /* Likewise for the alignment of a compressed section.
+	         For a SHF_COMPRESSED section set the correct
+	         sh_addralign value, which must match the d_align of
+	         the data (see __libelf_set_rawdata in elf_getdata.c).  */
+	      if ((shdr->sh_flags & SHF_COMPRESSED) != 0)
+		{
+		  sh_align = __libelf_type_align (ELFW(ELFCLASS,LIBELFBITS),
+						  ELF_T_CHDR);
+		  update_if_changed (shdr->sh_addralign, sh_align,
+				     scn->shdr_flags);
+		}
+
 	      if (scn->data_read == 0
 		  && __libelf_set_rawdata_wrlock (scn) != 0)
 		/* Something went wrong.  The error value is already set.  */

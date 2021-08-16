@@ -39,9 +39,6 @@
 #include <stdio.h>
 #include <string.h>
 
-/* gettext helper macros.  */
-#define _(Str) dgettext ("elfutils", Str)
-
 
 /* Helper Macros to write 32 bit and 64 bit functions.  */
 #define __elfw2_(Bits, Name) __elf##Bits##_##Name
@@ -148,7 +145,7 @@ enum
 };
 
 
-/* The visible `Elf_Data' type is not sufficent for some operations due
+/* The visible `Elf_Data' type is not sufficient for some operations due
    to a misdesigned interface.  Extend it for internal purposes.  */
 typedef struct
 {
@@ -436,10 +433,11 @@ extern const uint_fast8_t __libelf_type_aligns[ELFCLASSNUM - 1][ELF_T_NUM]
 # define __libelf_type_align(class, type)	\
     (__libelf_type_aligns[class - 1][type] ?: 1)
 
-/* Given an Elf handle and a section type returns the Elf_Data d_type.
+/* Given an GElf_Ehdr handle and a section type returns the Elf_Data d_type.
    Should not be called when SHF_COMPRESSED is set, the d_type should
    be ELF_T_BYTE.  */
-extern Elf_Type __libelf_data_type (Elf *elf, int sh_type, GElf_Xword align)
+extern Elf_Type __libelf_data_type (GElf_Ehdr *ehdr,
+				    int sh_type, GElf_Xword align)
   internal_function;
 
 

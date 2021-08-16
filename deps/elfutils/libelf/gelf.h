@@ -95,7 +95,7 @@ typedef Elf64_Dyn GElf_Dyn;
 /* Version definition sections.  */
 typedef Elf64_Verdef GElf_Verdef;
 
-/* Auxialiary version information.  */
+/* Auxiliary version information.  */
 typedef Elf64_Verdaux GElf_Verdaux;
 
 /* Version dependency section.  */

@@ -376,7 +376,7 @@ extern Elf64_Chdr *elf64_getchdr (Elf_Scn *__scn);
    It is always an error to call these functions on SHT_NOBITS
    sections or if the section has the SHF_ALLOC flag set.
    elf_compress_gnu will not check whether the section name starts
-   with ".debug" or .zdebug".  It is the responsibilty of the caller
+   with ".debug" or .zdebug".  It is the responsibility of the caller
    to make sure the deprecated GNU compression method is only called
    on correctly named sections (and to change the name of the section
    when using elf_compress_gnu).

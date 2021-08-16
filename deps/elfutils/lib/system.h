@@ -37,6 +37,7 @@
 #include <endian.h>
 #include <byteswap.h>
 #include <unistd.h>
+#include <string.h>
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 # define LE32(n)	(n)
@@ -69,9 +70,17 @@
     ((void *) ((char *) memcpy (dest, src, n) + (size_t) n))
 #endif
 
+/* Return TRUE if the start of STR matches PREFIX, FALSE otherwise.  */
+
+static inline int
+startswith (const char *str, const char *prefix)
+{
+  return strncmp (str, prefix, strlen (prefix)) == 0;
+}
+
 /* A special gettext function we use if the strings are too short.  */
 #define sgettext(Str) \
-  ({ const char *__res = strrchr (gettext (Str), '|');			      \
+  ({ const char *__res = strrchr (_(Str), '|');			      \
      __res ? __res + 1 : Str; })
 
 #define gettext_noop(Str) Str
@@ -85,6 +94,18 @@
      __res; })
 #endif
 
+#ifndef ACCESSPERMS
+#define ACCESSPERMS (S_IRWXU|S_IRWXG|S_IRWXO) /* 0777 */
+#endif
+
+#ifndef ALLPERMS
+#define ALLPERMS (S_ISUID|S_ISGID|S_ISVTX|S_IRWXU|S_IRWXG|S_IRWXO) /* 07777 */
+#endif
+
+#ifndef DEFFILEMODE
+#define DEFFILEMODE (S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH)/* 0666 */
+#endif
+
 static inline ssize_t __attribute__ ((unused))
 pwrite_retry (int fd, const void *buf, size_t len, off_t off)
 {
@@ -92,7 +113,7 @@ pwrite_retry (int fd, const void *buf, size_t len, off_t off)
 
   do
     {
-      ssize_t ret = TEMP_FAILURE_RETRY (pwrite (fd, buf + recvd, len - recvd,
+      ssize_t ret = TEMP_FAILURE_RETRY (pwrite (fd, ((char *)buf) + recvd, len - recvd,
 						off + recvd));
       if (ret <= 0)
 	return ret < 0 ? ret : recvd;
@@ -111,7 +132,7 @@ write_retry (int fd, const void *buf, size_t len)
 
   do
     {
-      ssize_t ret = TEMP_FAILURE_RETRY (write (fd, buf + recvd, len - recvd));
+      ssize_t ret = TEMP_FAILURE_RETRY (write (fd, ((char *)buf) + recvd, len - recvd));
       if (ret <= 0)
 	return ret < 0 ? ret : recvd;
 
@@ -129,7 +150,7 @@ pread_retry (int fd, void *buf, size_t len, off_t off)
 
   do
     {
-      ssize_t ret = TEMP_FAILURE_RETRY (pread (fd, buf + recvd, len - recvd,
+      ssize_t ret = TEMP_FAILURE_RETRY (pread (fd, ((char *)buf) + recvd, len - recvd,
 					       off + recvd));
       if (ret <= 0)
 	return ret < 0 ? ret : recvd;

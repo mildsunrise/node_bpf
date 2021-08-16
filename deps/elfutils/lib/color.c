@@ -126,7 +126,7 @@ parse_opt (int key, char *arg,
 	      }
 	  if (i == nvalues)
 	    {
-	      error (0, 0, dgettext ("elfutils", "\
+	      error (0, 0, _("\
 %s: invalid argument '%s' for '--color'\n\
 valid arguments are:\n\
   - 'always', 'yes', 'force'\n\
@@ -191,7 +191,7 @@ valid arguments are:\n\
 				if (asprintf (known[i].varp, "\e[%.*sm",
 					      (int) (env - val), val) < 0)
 				  error (EXIT_FAILURE, errno,
-					 gettext ("cannot allocate memory"));
+					 _("cannot allocate memory"));
 				break;
 			      }
 			}

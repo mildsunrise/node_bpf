@@ -133,7 +133,7 @@ libelf_release_all (Elf *elf)
 }
 
 
-/* Macro to convert endianess in place.  It determines the function it
+/* Macro to convert endianness in place.  It determines the function it
    has to use itself.  */
 #define CONVERT(Var) \
   (Var) = (sizeof (Var) == 1						      \

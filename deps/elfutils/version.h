@@ -30,7 +30,7 @@
 #ifndef _ELFUTILS_VERSION_H
 #define _ELFUTILS_VERSION_H	1
 
-#define _ELFUTILS_VERSION	180
+#define _ELFUTILS_VERSION	185
 
 #define _ELFUTILS_PREREQ(major, minor) \
   (_ELFUTILS_VERSION >= ((major) * 1000 + (minor)))

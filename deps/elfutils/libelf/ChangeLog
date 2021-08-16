@@ -1,3 +1,75 @@
+2020-12-12  Mark Wielaard  <mark@klomp.org>
+
+	* elf.h: Update from glibc.
+
+2020-12-16  Dmitry V. Levin  <ldv@altlinux.org>
+
+	* libelfP.h (_): Remove.
+
+2020-12-15  Mark Wielaard  <mark@klomp.org>
+
+	* elf_begin.c (get_shnum): Make sure the full Ehdr is available.
+
+2020-12-12  Dmitry V. Levin  <ldv@altlinux.org>
+
+	* common.h: Fix spelling typo in comment.
+	* gelf.h: Likewise.
+	* libelf.h: Likewise.
+	* libelfP.h: Likewise.
+	* elf32_checksum.c (elfw2): Likewise.
+	* elf_begin.c (dup_elf, write_file): Likewise.
+	* elf_compress.c (__libelf_compress): Likewise.
+	* elf_compress_gnu.c (elf_compress_gnu): Likewise.
+
+2020-12-11  Dmitry V. Levin  <ldv@altlinux.org>
+
+	* Makefile.am (GCC_INCLUDE): Remove.
+
+2020-12-09  Dmitry V. Levin  <ldv@altlinux.org>
+
+	* Makefile.am (noinst_PROGRAMS): Rename to noinst_DATA.
+	(libelf_so_SOURCES): Remove.
+	(CLEANFILES): Add libelf.so.
+
+2020-11-30  Dmitry V. Levin  <ldv@altlinux.org>
+
+	* Makefile.am (libelf.so$(EXEEXT)): Drop $(EXEEXT) suffix.
+
+2020-11-06  Mark Wielaard  <mark@klomp.org>
+
+	* elf-knowledge.h (SH_ENTSIZE_HASH): Update comment.
+
+2020-11-01  Mark Wielaard  <mark@klomp.org>
+
+	* elf_strptr.c (elf_strptr): Check shdr is not NULL.
+
+2020-11-01  Mark Wielaard  <mark@klomp.org>
+
+	* elf_getphdrnum.c (__elf_getphdrnum_rdlock): Set *dst to zero on
+	error.
+
+2020-11-01  Mark Wielaard  <mark@klomp.org>
+
+	* libelfP.h (__libelf_data_type): Take an GElf_Ehdr instead of an
+	Elf handle.
+	* elf_getdata.c (__libelf_data_type): Likewise. And check ehdr
+	directly instead of fetching a new one.
+	(__libelf_set_rawdata_wrlock): Fetch Ehdr, report an error when that
+	fails, otherwise call __libelf_data_type.
+
+2020-10-28  Mark Wielaard  <mark@klomp.org>
+
+	* elf.h: Update from glibc.
+
+2020-08-28  Mark Wielaard  <mark@klomp.org>
+
+	* elf.h: Update from glibc.
+
+2020-08-19  Mark Wielaard  <mark@klomp.org>
+
+	* elf32_updatenull.c (updatenull_wrlock): Fixup the sh_addralign
+	of an SHF_COMPRESSED section if necessary.
+
 2020-06-04  Mark Wielaard  <mark@klomp.org>
 
 	* elf.h: Update from glibc.

@@ -1,3 +1,30 @@
+2021-04-19  Martin Liska  <mliska@suse.cz>
+
+	* system.h (startswith): New function.
+	(pwrite_retry): Cast to char *.
+	(write_retry): Likewise.
+	(pread_retry): Likewise.
+
+2021-02-05  Mark Wielaard  <mark@klomp.org>
+
+	* printversion.c (print_version): Update copyright year.
+
+2020-12-16  Dmitry V. Levin  <ldv@altlinux.org>
+
+	* color.c (parse_opt): Replace gettext(...) and
+	dgettext("elfutils, ...) with _(...).
+	* printversion.c (print_version): Replace gettext(...) with _(...).
+	* system.h (sgettext): Likewise.
+
+	* eu-config.h (_): New macro.
+	* xmalloc.c (_): Remove.
+
+2020-11-01  Érico N. Rolim  <erico.erc@gmail.com>
+
+	* system.h (ACCESSPERMS): Define macro if it doesn't exist.
+	(ALLPERMS): Likewise.
+	(DEFFILEMODE): Likewise.
+
 2020-06-11  Mark Wielaaard  <mark@klomp.org>
 
 	* printversion.c (print_version): Update copyright year.

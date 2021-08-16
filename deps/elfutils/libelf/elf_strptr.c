@@ -119,7 +119,7 @@ elf_strptr (Elf *elf, size_t idx, size_t offset)
   if (elf->class == ELFCLASS32)
     {
       Elf32_Shdr *shdr = strscn->shdr.e32 ?: __elf32_getshdr_rdlock (strscn);
-      if (unlikely (shdr->sh_type != SHT_STRTAB))
+      if (unlikely (shdr == NULL || shdr->sh_type != SHT_STRTAB))
 	{
 	  /* This is no string section.  */
 	  __libelf_seterrno (ELF_E_INVALID_SECTION);
