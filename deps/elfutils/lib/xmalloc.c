@@ -30,7 +30,6 @@
 # include <config.h>
 #endif
 
-#include <libintl.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -45,7 +44,7 @@ xmalloc (size_t n)
 
   p = malloc (n);
   if (p == NULL)
-    error (EXIT_FAILURE, 0, _("memory exhausted"));
+    abort();
   return p;
 }
 
@@ -58,7 +57,7 @@ xcalloc (size_t n, size_t s)
 
   p = calloc (n, s);
   if (p == NULL)
-    error (EXIT_FAILURE, 0, _("memory exhausted"));
+    abort();
   return p;
 }
 
@@ -70,6 +69,6 @@ xrealloc (void *p, size_t n)
 {
   p = realloc (p, n);
   if (p == NULL)
-    error (EXIT_FAILURE, 0, _("memory exhausted"));
+    abort();
   return p;
 }

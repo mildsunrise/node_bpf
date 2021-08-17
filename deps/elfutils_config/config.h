@@ -27,7 +27,7 @@
 
 /* Define to 1 if you have the declaration of `rawmemchr', and to 0 if you
    don't. */
-#define HAVE_DECL_RAWMEMCHR 1
+/* #undef HAVE_DECL_RAWMEMCHR */
 
 /* Defined if __attribute__((fallthrough)) is supported */
 /* #undef HAVE_FALLTHROUGH */
