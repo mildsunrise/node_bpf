@@ -10,6 +10,7 @@
 #include <sys/utsname.h>
 
 #include <bpf.h>
+#include <libbpf.h>
 #include <errno.h>
 
 #include <napi.h>
@@ -315,6 +316,11 @@ Napi::Value BpfObjGet(const CallbackInfo& info) {
     return ToStatus(env, bpf_obj_get(path.c_str()));
 }
 
+Napi::Value GetNumPossibleCPUs(const CallbackInfo& info) {
+    Napi::Env env = info.Env();
+    return ToStatus(env, libbpf_num_possible_cpus());
+}
+
 #define EXPOSE_FUNCTION(NAME, METHOD) exports.Set(NAME, Napi::Function::New(env, METHOD, NAME))
 
 Napi::Object Init(Napi::Env env, Napi::Object exports) {
@@ -345,6 +351,7 @@ Napi::Object Init(Napi::Env env, Napi::Object exports) {
     EXPOSE_FUNCTION("getMapInfo", GetMapInfo);
     EXPOSE_FUNCTION("mapGetFdById", MapGetFdById);
     EXPOSE_FUNCTION("bpfObjGet", BpfObjGet);
+    EXPOSE_FUNCTION("getNumPossibleCPUs", GetNumPossibleCPUs);
 
     return exports;
 }
