@@ -30,8 +30,6 @@
                 "elfutils/lib/next_prime.c",
                 "elfutils/lib/crc32.c",
                 "elfutils/lib/crc32_file.c",
-                "elfutils/lib/color.c",
-                "elfutils/lib/printversion.c",
             ],
             "include_dirs": [
                 "elfutils/lib",

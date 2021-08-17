@@ -25,6 +25,9 @@ curl -fL "$URL" | tar -xj "$ORIG"
 )
 rm -rf "$ORIG"
 
+# patches
+rm elfutils/lib/{color,printversion}.{h,c}
+
 if [ -z "$(git status --porcelain)" ]; then
   echo "error: no changes"; exit 1
 fi
