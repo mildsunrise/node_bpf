@@ -15,21 +15,21 @@ rm -rf prebuilds
 # It only makes sense to prebuild for archs supported by
 # libbpf: see deps/libbpf/src/bpf.c
 
-scripts/run_in_docker.sh $IMAGE 14 \
-    scripts/with_copy.sh \
-    scripts/do_prebuild.sh "ia32 x64"
+scripts/prebuild/run_in_docker.sh $IMAGE 14 \
+    scripts/prebuild/with_copy.sh \
+    scripts/prebuild/do_prebuild.sh "ia32 x64"
 
-scripts/run_in_docker.sh arm32v7/$IMAGE 14 \
-    scripts/with_copy.sh \
-    scripts/do_prebuild.sh "arm"
+scripts/prebuild/run_in_docker.sh arm32v7/$IMAGE 14 \
+    scripts/prebuild/with_copy.sh \
+    scripts/prebuild/do_prebuild.sh "arm"
 
-scripts/run_in_docker.sh arm64v8/$IMAGE 14 \
-    scripts/with_copy.sh \
-    scripts/do_prebuild.sh "arm64"
+scripts/prebuild/run_in_docker.sh arm64v8/$IMAGE 14 \
+    scripts/prebuild/with_copy.sh \
+    scripts/prebuild/do_prebuild.sh "arm64"
 
 # Test that they load correctly
 # (since we are just testing for Node.js / glibc,
 # compatibility, I don't think it's useful to test
 # more than one arch here?)
-scripts/run_in_docker.sh ubuntu:xenial 12 scripts/load_prebuild.sh
-scripts/load_prebuild.sh
+scripts/prebuild/run_in_docker.sh ubuntu:xenial 12 scripts/prebuild/load_prebuild.sh
+scripts/prebuild/load_prebuild.sh
