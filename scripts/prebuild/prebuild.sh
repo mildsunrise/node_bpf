@@ -1,7 +1,7 @@
 #!/bin/bash
 # Re-builds prebuilds and/or tests them for portability
 # Dependencies: docker (plus permissions to use it)
-set -e
+set -eEuo pipefail
 
 # Register binfmt handlers so we can emulate other archs
 docker run --rm --privileged multiarch/qemu-user-static --reset -p yes

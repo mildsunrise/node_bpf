@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -eEuo pipefail
 
 IMAGE="$1"
 NODE_VERSION="$2"

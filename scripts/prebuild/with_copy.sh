@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -eEuo pipefail
 
 DIR="/tmp/app"
 mkdir "$DIR"

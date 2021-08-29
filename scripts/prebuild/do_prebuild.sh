@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -eEuo pipefail
 
 ARCHS="$1"
 for arch in $ARCHS; do
