@@ -183,8 +183,9 @@ describe('ConvMap tests', () => {
         const map = new ConvMap(ref, u32type, u32type)
 
         // EINVAL if kernel doesn't have the operation, ENOTSUPP if it does
-        expect(() => map.getDelete(2)).toThrow()
-        
+        //expect(() => map.getDelete(2)).toThrow()
+        //FIXME: above op was implemented in 5.14.x
+
         expect(sortKeys(map)).toStrictEqual([])
         expect(map.get(2)).toBeUndefined()
         expect(map.delete(2)).toBe(false)
