@@ -3,8 +3,9 @@
  * 
  * Keep synchronized with `deps/libbpf/include/uapi/linux/bpf.h`.
  * For practicity, we omit the UNSPEC = 0 key from each enum, if present.
+ *
+ * @module
  */
-/** */
 
 /**
  * Maximum length of object names, in bytes, including NUL terminator.

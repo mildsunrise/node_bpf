@@ -178,9 +178,9 @@ map.get(2) === value1.ref.id  // -> true
 
 
 
-[`createMap`]: https://bpf.alba.sh/docs/globals.html#createmap
-[`IMap`]: https://bpf.alba.sh/docs/interfaces/imap.html
-[`RawMap`]: https://bpf.alba.sh/docs/classes/rawmap.html
-[`ConvMap`]: https://bpf.alba.sh/docs/classes/convmap.html
-[`TypeConversion`]: https://bpf.alba.sh/docs/interfaces/typeconversion.html
-[`IArrayMap`]: https://bpf.alba.sh/docs/interfaces/iarraymap.html
+[`createMap`]: https://bpf.alba.sh/docs/modules.html#createMap
+[`IMap`]: https://bpf.alba.sh/docs/interfaces/IMap.html
+[`RawMap`]: https://bpf.alba.sh/docs/classes/RawMap.html
+[`ConvMap`]: https://bpf.alba.sh/docs/classes/ConvMap.html
+[`TypeConversion`]: https://bpf.alba.sh/docs/interfaces/TypeConversion.html
+[`IArrayMap`]: https://bpf.alba.sh/docs/interfaces/IArrayMap.html
